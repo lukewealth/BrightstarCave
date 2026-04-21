@@ -1,0 +1,133 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", ui-serif, Georgia, serif;
+  
+  --color-primary: var(--bg-primary);
+  --color-secondary: var(--bg-secondary);
+  --color-gold: var(--gold);
+  --color-silver: var(--silver);
+  --color-green: var(--emerald);
+}
+
+:root {
+  --bg-primary: #121212; /* Dark Grey Deep */
+  --bg-secondary: #1E1E1E; /* Dark Grey Surface */
+  --text-primary: #F2F2F7;
+  --text-secondary: #A1A1A6; /* Silver Text */
+  --gold: #D4AF37;
+  --gold-muted: rgba(212, 175, 53, 0.15);
+  --silver: #C0C0C0;
+  --silver-glow: rgba(192, 192, 192, 0.1);
+  --emerald: #10B981;
+  --emerald-muted: rgba(16, 185, 129, 0.1);
+  --border-color: rgba(255, 255, 255, 0.05);
+  --glass-bg: rgba(18, 18, 18, 0.8);
+}
+
+:root.light {
+  --bg-primary: #F2F2F7;
+  --bg-secondary: #FFFFFF;
+  --text-primary: #121212;
+  --text-secondary: #8E8E93;
+  --gold: #AF8B1E;
+  --gold-muted: rgba(175, 139, 30, 0.1);
+  --silver: #A1A1A6;
+  --silver-glow: rgba(161, 161, 166, 0.1);
+  --emerald: #059669;
+  --emerald-muted: rgba(5, 150, 105, 0.1);
+  --border-color: rgba(0, 0, 0, 0.05);
+  --glass-bg: rgba(255, 255, 255, 0.85);
+}
+
+@layer base {
+  body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    @apply antialiased transition-colors duration-700;
+    font-family: var(--font-sans);
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, .font-serif {
+    font-family: var(--font-serif);
+  }
+}
+
+@layer utilities {
+  .text-primary { color: var(--text-primary); }
+  .text-secondary { color: var(--text-secondary); }
+  .text-gold { color: var(--gold); }
+  .text-silver { color: var(--silver); }
+  .text-emerald { color: var(--emerald); }
+  
+  .bg-primary { background-color: var(--bg-primary); }
+  .bg-secondary { background-color: var(--bg-secondary); }
+  .bg-gold { background-color: var(--gold); }
+  .bg-silver { background-color: var(--silver); }
+  .bg-emerald { background-color: var(--emerald); }
+
+  .border-gold { border-color: var(--gold-muted); }
+  .border-silver { border-color: rgba(192, 192, 192, 0.1); }
+  .border-emerald { border-color: var(--emerald-muted); }
+
+  .glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border-color);
+  }
+
+  .glass-gold {
+    background: rgba(212, 175, 53, 0.02);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--gold-muted);
+  }
+
+  .glass-emerald {
+    background: rgba(16, 185, 129, 0.02);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--emerald-muted);
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+}
+
+/* Luxury Animations */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, var(--gold-muted), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 3s infinite linear;
+}
+
+.gold-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background-color: var(--gold);
+  box-shadow: 0 0 10px var(--gold);
+}
+
+.emerald-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background-color: var(--emerald);
+  box-shadow: 0 0 10px var(--emerald);
+}
+
+.metallic-fade {
+  background: linear-gradient(to bottom, var(--bg-secondary), var(--bg-primary));
+}

@@ -1,0 +1,118 @@
+{
+  "menu": [
+    {
+      "id": "ck-01",
+      "name": "Old Fashioned",
+      "price": 18000,
+      "category": "Cocktails",
+      "type": "bar",
+      "stock": 150,
+      "description": "Bourbon, Angostura, Sugar, Orange"
+    },
+    {
+      "id": "ck-02",
+      "name": "Espresso Martini",
+      "price": 20000,
+      "category": "Cocktails",
+      "type": "bar",
+      "stock": 100,
+      "description": "Vodka, Fresh Espresso, Coffee Liqueur"
+    },
+    {
+      "id": "sp-01",
+      "name": "Truffle Fries",
+      "price": 14000,
+      "category": "Small Plates",
+      "type": "kitchen",
+      "stock": 50,
+      "description": "Parmesan, Herbs, Roasted Garlic Aioli"
+    },
+    {
+      "id": "sp-02",
+      "name": "Spicy Calamari",
+      "price": 18000,
+      "category": "Small Plates",
+      "type": "kitchen",
+      "stock": 30,
+      "description": "Crispy Calamari, Gochujang Glaze, Lime"
+    },
+    {
+      "id": "mn-01",
+      "name": "Wagyu Slider",
+      "price": 24000,
+      "category": "Mains",
+      "type": "kitchen",
+      "stock": 40,
+      "description": "Caramelized Onion, Brioche, Secret Sauce"
+    },
+    {
+      "id": "mn-02",
+      "name": "Miso Glazed Salmon",
+      "price": 32000,
+      "category": "Mains",
+      "type": "kitchen",
+      "stock": 25,
+      "description": "Wild Salmon, Bok Choy, Sesame Ginger Sauce"
+    },
+    {
+      "id": "ap-01",
+      "name": "3-Bedroom VIP Suite",
+      "price": 150000,
+      "category": "Apartments",
+      "type": "hotel",
+      "stock": 2,
+      "description": "Fully furnished, 24/7 Power/Internet, PS5 Gaming. ₦150,000 per night.",
+      "image": "/images/WhatsApp Image 2026-04-21 at 19.35.32 (10).jpeg"
+    },
+    {
+      "id": "ap-02",
+      "name": "1-Bedroom Executive",
+      "price": 50000,
+      "category": "Apartments",
+      "type": "hotel",
+      "stock": 5,
+      "description": "Premium features, compact luxury. ₦50,000 per night.",
+      "image": "/images/WhatsApp Image 2026-04-21 at 19.35.32 (2).jpeg"
+    },
+    {
+      "id": "ap-03",
+      "name": "Studio Service Room",
+      "price": 35000,
+      "category": "Apartments",
+      "type": "hotel",
+      "stock": 8,
+      "description": "Ideal for short stays. ₦35,000 per night.",
+      "image": "/images/WhatsApp Image 2026-04-21 at 19.35.32 (9).jpeg"
+    },
+    {
+      "id": "pl-01",
+      "name": "Celestial Pool Access",
+      "price": 15000,
+      "category": "Leisure",
+      "type": "hotel",
+      "stock": 20,
+      "description": "All-day access to our temperature-controlled infinity pool.",
+      "image": "/images/IMG_0093 2.PNG"
+    },
+    {
+      "id": "pl-02",
+      "name": "Outdoor Zen Garden Lounge",
+      "price": 10000,
+      "category": "Leisure",
+      "type": "hotel",
+      "stock": 30,
+      "description": "Peaceful outdoor relaxation area.",
+      "image": "/images/WhatsApp Image 2026-04-21 at 19.35.31 (1).jpeg"
+    },
+    {
+      "id": "sn-01",
+      "name": "Vantage Snooker (1 Hr)",
+      "price": 10000,
+      "category": "Leisure",
+      "type": "bar",
+      "stock": 4,
+      "description": "One hour of play on our championship-grade mahogany tables.",
+      "image": "/images/WhatsApp Image 2026-04-21 at 19.35.32 (7).jpeg"
+    }
+  ]
+}

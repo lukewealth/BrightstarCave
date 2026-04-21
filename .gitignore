@@ -6,3 +6,4 @@ coverage/
 *.log
 .env*
 !.env.example
+\n# Firebase configuration\nfirebase-applet-config.json\nfirebase-blueprint.json

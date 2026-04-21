@@ -49,7 +49,7 @@ service cloud.firestore {
         return data.table is string && data.table.size() <= 50 &&
                data.items is list && data.items.size() > 0 &&
                data.total is number && data.total >= 0 &&
-               data.status in ['new', 'preparing', 'ready', 'served', 'cancelled'] &&
+               data.status in ['pending-verification', 'new', 'preparing', 'ready', 'served', 'cancelled'] &&
                data.userId == request.auth.uid &&
                data.createdAt == request.time;
       }

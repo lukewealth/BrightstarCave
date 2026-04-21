@@ -1,24 +1,20 @@
 import { 
-  Link, 
   ChevronRight, 
   X, 
   Gamepad2, 
   Beer, 
   Utensils, 
   Home, 
-  Sparkles, 
   Sun, 
   Trophy, 
   Heart, 
-  Coffee, 
   Zap,
   Star,
   ArrowRight,
   MoveRight,
-  LayoutGrid,
-  ShieldCheck,
   Leaf
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { motion, AnimatePresence, useScroll, useTransform } from "motion/react";
 import { useState, useEffect, useRef } from "react";
 

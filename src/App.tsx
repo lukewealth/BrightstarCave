@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { auth } from "./lib/firebase";
+import { auth, getUserRole, UserRole } from "./lib/firebase";
 
 // Components & Pages
 import { Layout } from "./components/Layout";
@@ -14,12 +14,19 @@ import { Star } from "lucide-react";
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
+  const [role, setRole] = useState<UserRole>('guest');
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "dark");
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
+      if (u) {
+        const r = await getUserRole(u.uid);
+        setRole(r);
+      } else {
+        setRole('guest');
+      }
       setTimeout(() => setLoading(false), 1000); // Slight delay for transition
     });
     return () => unsubscribe();
@@ -41,7 +48,7 @@ export default function App() {
             initial={{ opacity: 1 }}
             exit={{ opacity: 0, scale: 1.05 }}
             transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed inset-0 z-[999] bg-[#050505] flex flex-col items-center justify-center"
+            className="fixed inset-0 z-[999] bg-primary flex flex-col items-center justify-center"
           >
             <div className="relative group">
               <motion.div
@@ -66,7 +73,6 @@ export default function App() {
                 <Star className="text-accent fill-accent/20" size={40} />
               </motion.div>
               
-              {/* Decorative rings */}
               <motion.div 
                 animate={{ rotate: -360 }}
                 transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
@@ -87,19 +93,21 @@ export default function App() {
                 initial={{ scaleX: 0 }}
                 animate={{ scaleX: 1 }}
                 transition={{ delay: 0.8, duration: 1.5, ease: "easeInOut" }}
-                className="h-px bg-accent/30 mt-4 w-40 origin-center"
+                className="h-px bg-accent/30 mt-4 w-40 origin-center mx-auto"
               />
             </div>
           </motion.div>
         ) : null}
       </AnimatePresence>
 
-      <Layout user={user} theme={theme} toggleTheme={toggleTheme}>
+      <Layout user={user} role={role} theme={theme} toggleTheme={toggleTheme}>
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/about" element={<AboutUsPage />} />
           <Route path="/orders" element={<OrderingPage user={user} />} />
-          <Route path="/admin" element={<AdminPortal user={user} />} />
+          <Route path="/admin" element={
+            role !== 'guest' ? <AdminPortal user={user} /> : <Navigate to="/" />
+          } />
         </Routes>
       </Layout>
     </BrowserRouter>

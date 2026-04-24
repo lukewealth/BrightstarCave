@@ -6,7 +6,11 @@ const aboutImages = [
   "/images/WhatsApp Image 2026-04-21 at 19.35.32 (11).jpeg",
   "/images/WhatsApp Image 2026-04-21 at 19.35.32 (9).jpeg",
   "/images/WhatsApp Image 2026-04-21 at 19.35.32 (2).jpeg",
-  "/images/WhatsApp Image 2026-04-21 at 19.35.32.jpeg"
+  "/images/WhatsApp Image 2026-04-21 at 19.35.32.jpeg",
+  "/images/IMG_1752.png",
+  "/images/IMG_1757.png",
+  "/images/IMG_1758.png",
+  "/images/IMG_1760 2.png",
 ];
 
 export const AboutUsPage = () => {
@@ -20,8 +24,8 @@ export const AboutUsPage = () => {
   }, []);
 
   const hover2X = {
-    scale: 1.1,
-    transition: { type: "spring", stiffness: 400, damping: 10 }
+    scale: 1.0,
+    transition: { duration: 0.3, ease: "easeInOut" }
   };
 
   return (

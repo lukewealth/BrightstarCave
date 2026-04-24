@@ -1,24 +1,88 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
-
-const env = (import.meta as any).env;
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
+import { 
+  getFirestore, 
+  doc, 
+  getDoc, 
+  setDoc, 
+  collection, 
+  getDocs, 
+  writeBatch, 
+  query, 
+  where, 
+  limit,
+  getDocFromServer
+} from 'firebase/firestore';
 
 const firebaseConfig = {
-  projectId: env.VITE_FIREBASE_PROJECT_ID,
-  appId: env.VITE_FIREBASE_APP_ID,
-  apiKey: env.VITE_FIREBASE_API_KEY,
-  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN,
-  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  measurementId: env.VITE_FIREBASE_MEASUREMENT_ID
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
+
+if (!firebaseConfig.apiKey) {
+  console.error("Firebase API Key is missing. Check your .env file.");
+}
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app, env.VITE_FIREBASE_FIRESTORE_DATABASE_ID);
+export const db = getFirestore(app);
 
 export const googleProvider = new GoogleAuthProvider();
+
+export type UserRole = 'admin' | 'staff_kitchen' | 'staff_bar' | 'staff_waiter' | 'guest';
+
+export const getUserRole = async (uid: string, email?: string | null): Promise<UserRole> => {
+  const env = (import.meta as any).env;
+  const targetEmail = email || auth.currentUser?.email;
+  
+  if (!uid && !targetEmail) return 'guest';
+  if (targetEmail === env.VITE_ADMIN_EMAIL) return 'admin';
+  if (targetEmail === env.VITE_STAFF_EMAIL) return 'staff_waiter';
+
+  try {
+    // Check admins collection for assigned roles
+    const adminDoc = await getDoc(doc(db, "admins", uid));
+    if (adminDoc.exists()) return adminDoc.data().role as UserRole;
+    
+    // Check by email if UID fails
+    if (targetEmail) {
+      const q = query(collection(db, "admins"), where("email", "==", targetEmail), limit(1));
+      const qSnap = await getDocs(q);
+      if (!qSnap.empty) return qSnap.docs[0].data().role as UserRole;
+    }
+  } catch (error) {
+    console.error("Error fetching user role:", error);
+  }
+
+  return 'guest';
+};
+
+// Inventory Seeding Utility
+export const seedInventory = async (menuData: any[]) => {
+  try {
+    const inventorySnap = await getDocs(collection(db, "inventory"));
+    if (inventorySnap.empty) {
+      const batch = writeBatch(db);
+      menuData.forEach(item => {
+        const docRef = doc(db, "inventory", item.id);
+        batch.set(docRef, {
+          ...item,
+          lastRestocked: new Date(),
+          soldCount: 0
+        });
+      });
+      await batch.commit();
+      console.log("Inventory seeded successfully");
+    }
+  } catch (err) {
+    console.error("Error seeding inventory:", err);
+  }
+};
 
 export const signInWithGoogle = async () => {
   try {

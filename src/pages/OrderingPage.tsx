@@ -1,55 +1,90 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ChevronRight, ShoppingBag, Wifi, X, CreditCard, Clock, CheckCircle2, Loader2, MoveRight } from "lucide-react";
+import { 
+  ShoppingBagIcon, 
+  ChevronRightIcon, 
+  CreditCardIcon, 
+  ClockIcon, 
+  CheckCircleIcon,
+  UserIcon,
+  TableCellsIcon,
+  MagnifyingGlassIcon,
+  ArrowRightIcon
+} from "@heroicons/react/24/outline";
 import { User } from "firebase/auth";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { db, handleFirestoreError } from "../lib/firebase";
+import { 
+  collection, 
+  addDoc, 
+  serverTimestamp, 
+  query, 
+  where, 
+  onSnapshot, 
+  orderBy, 
+  limit,
+  doc,
+  updateDoc,
+  increment
+} from "firebase/firestore";
+import { db, getUserRole, UserRole } from "../lib/firebase";
 import { menuItems, MenuItem } from "../data/menu";
+import { 
+  GlassCard, 
+  GoldButton, 
+  EmeraldButton, 
+  SilverInput, 
+  Badge, 
+  SectionTitle, 
+  GlassModal, 
+  TabSystem, 
+  Toast 
+} from "../components/design-system/Primitive";
 
 interface CartItem extends MenuItem {
   quantity: number;
 }
 
 export const OrderingPage = ({ user }: { user: User | null }) => {
+  const [role, setRole] = useState<UserRole | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
-  const [orderId, setOrderId] = useState<string | null>(null);
-  const [timeLeft, setTimeLeft] = useState(600); // 10 minutes
-  const [isPaid, setIsPaid] = useState(false);
-  
-  const categoriesList = ["All", ...Array.from(new Set(menuItems.map(i => i.category)))];
   const [activeTab, setActiveTab] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [tableId, setTableId] = useState("");
+  const [staffEmail, setStaffEmail] = useState("");
+  const [activeOrders, setActiveOrders] = useState<any[]>([]);
+  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error', visible: boolean }>({ message: '', type: 'success', visible: false });
 
-  const hover2X = {
-    scale: 1.5, // 2X might be too large for small buttons, using 1.5 for better UX but following 2X spirit where appropriate
-    transition: { type: "spring", stiffness: 400, damping: 10 }
-  };
-
-  const hoverButton2X = {
-    scale: 1.1, // Full 2X on big buttons will break layout, using 1.1 with high impact
-    transition: { type: "spring", stiffness: 400, damping: 10 }
-  };
+  const categories = useMemo(() => ["All", ...Array.from(new Set(menuItems.map(i => i.category)))], []);
 
   useEffect(() => {
-    let timer: any;
-    if (showCheckout && timeLeft > 0 && !isPaid) {
-      timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
-    } else if (showCheckout && timeLeft === 0 && !isPaid) {
-      setShowCheckout(false);
+    if (user) {
+      getUserRole(user.uid, user.email).then(setRole);
+      
+      // Listen to active orders for this user or table
+      const q = query(
+        collection(db, "orders"),
+        where("userId", "==", user.uid),
+        orderBy("createdAt", "desc"),
+        limit(5)
+      );
+      
+      const unsub = onSnapshot(q, (snap) => {
+        setActiveOrders(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      });
+      
+      return () => unsub();
     }
-    return () => clearInterval(timer);
-  }, [showCheckout, timeLeft, isPaid]);
+  }, [user]);
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const filteredItems = activeTab === "All" 
-    ? menuItems 
-    : menuItems.filter(i => i.category === activeTab);
+  const filteredItems = useMemo(() => {
+    return menuItems.filter(item => {
+      const matchesCategory = activeTab === "All" || item.category === activeTab;
+      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                           item.description.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesCategory && matchesSearch;
+    });
+  }, [activeTab, searchQuery]);
 
   const addToCart = (item: MenuItem) => {
     setCart(prev => {
@@ -59,6 +94,7 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
       }
       return [...prev, { ...item, quantity: 1 }];
     });
+    showToast(`${item.name} added to selection`);
   };
 
   const updateQuantity = (id: string, delta: number) => {
@@ -71,308 +107,283 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
     }).filter(i => i.quantity > 0));
   };
 
-  const initiateCheckout = () => {
-    if (!user) {
-      alert("Please enter the portal first.");
-      return;
-    }
-    setShowCheckout(true);
-    setTimeLeft(600);
-    setIsPaid(false);
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type, visible: true });
   };
 
-  const handleConfirmPaid = async () => {
+  const handleCheckout = async () => {
+    if (!tableId) {
+      showToast("Please provide Table/Room ID", "error");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const total = cart.reduce((s, i) => s + (i.price * i.quantity), 0);
-      const itemsList = cart.map(i => `${i.name} x${i.quantity}`);
       
-      const docRef = await addDoc(collection(db, "orders"), {
-        table: "VIP-Table-" + Math.floor(Math.random() * 20),
-        items: itemsList,
-        total: total,
-        status: "pending-verification",
-        userId: user?.uid,
-        userName: user?.displayName || user?.email,
+      const orderData = {
+        table: tableId,
+        items: cart.map(i => ({ id: i.id, name: i.name, quantity: i.quantity, price: i.price })),
+        total,
+        status: "new",
+        userId: user?.uid || "guest",
+        userName: user?.displayName || user?.email || "Guest",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        paymentMethod: "bank-transfer",
-        isPaidDeclared: true
-      });
-      
-      setOrderId(docRef.id);
-      setIsPaid(true);
+        staffAttribution: role !== 'guest' ? user?.email : null,
+        staffEmail: staffEmail || null
+      };
+
+      await addDoc(collection(db, "orders"), orderData);
+
+      // Deduct stock
+      for (const item of cart) {
+        const itemRef = doc(db, "inventory", item.id);
+        await updateDoc(itemRef, {
+          stock: increment(-item.quantity),
+          soldCount: increment(item.quantity)
+        });
+      }
+
       setCart([]);
-      setTimeout(() => {
-        setShowCheckout(false);
-        setIsPaid(false);
-        setOrderId(null);
-      }, 5000);
-    } catch (error) {
-      handleFirestoreError(error, 'create', 'orders');
+      setShowCheckout(false);
+      showToast("Order synchronized with terminal");
+    } catch (err) {
+      showToast("Checkout failed", "error");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="flex h-full bg-primary relative">
-      <div className="flex-1 p-8 overflow-y-auto no-scrollbar">
-        <header className="mb-12">
-          <motion.h3 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="text-emerald text-[10px] uppercase tracking-[0.3em] font-bold mb-2"
-          >
-            Selection
-          </motion.h3>
-          <motion.h2 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-4xl font-serif text-white"
-          >
-            The Curated Menu
-          </motion.h2>
-          <div className="flex mt-6 gap-6 overflow-x-auto pb-4 no-scrollbar">
-            {categoriesList.map((tab, i) => (
-              <motion.button 
-                key={tab} 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                whileHover={hover2X}
-                onClick={() => setActiveTab(tab)}
-                className={`text-[10px] uppercase tracking-widest px-5 py-2 rounded-full border transition-all shrink-0 ${activeTab === tab ? "border-emerald text-emerald bg-emerald/10" : "border-white/5 text-secondary hover:text-white"}`}
-              >
-                {tab}
-              </motion.button>
-            ))}
+    <div className="flex h-full bg-primary text-white overflow-hidden relative font-sans">
+      <main className="flex-1 overflow-y-auto p-8 lg:p-12 space-y-12 no-scrollbar">
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
+          <div className="space-y-4">
+            <h3 className="text-gold text-[10px] uppercase tracking-[0.8em] font-black opacity-60">Selection Portal</h3>
+            <SectionTitle subtitle="Gastronomy & Leisure" title="The Curated Menu" />
+          </div>
+          <div className="flex gap-4 w-full md:w-auto">
+            <SilverInput 
+              placeholder="Seek flavors..." 
+              icon={MagnifyingGlassIcon} 
+              value={searchQuery}
+              onChange={(e: any) => setSearchQuery(e.target.value)}
+              className="w-full md:w-80"
+            />
           </div>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-20">
+        <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
+          <TabSystem 
+            tabs={categories.map(c => ({ id: c, label: c }))} 
+            activeTab={activeTab} 
+            onChange={setActiveTab} 
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
           <AnimatePresence mode="popLayout">
-            {filteredItems.map((item, i) => (
-              <motion.div 
-                key={item.id}
+            {filteredItems.map((item) => (
+              <motion.div
                 layout
-                initial={{ opacity: 0, scale: 0.9 }}
+                key={item.id}
+                initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.3 }}
-                className="p-8 border border-white/[0.03] bg-secondary/40 rounded-[32px] hover:border-silver/20 transition-all group flex justify-between items-center glass-card"
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="group"
               >
-                <div className="max-w-[70%]">
-                  <span className="text-[9px] uppercase text-silver tracking-widest font-bold bg-silver/5 px-2 py-0.5 rounded">{item.category}</span>
-                  <h4 className="text-xl font-serif mt-3 text-white">{item.name}</h4>
-                  <p className="text-xs text-secondary mt-2 leading-relaxed font-light">{item.description}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-emerald font-serif text-xl font-bold">₦{item.price.toLocaleString()}</p>
-                  <motion.button 
-                    whileHover={hover2X}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => addToCart(item)}
-                    className="mt-5 text-[10px] uppercase px-5 py-2.5 border border-emerald/30 rounded-lg hover:bg-emerald hover:text-black transition-all flex items-center gap-2 text-emerald font-bold"
-                  >
-                    Add <ChevronRight size={12} />
-                  </motion.button>
-                </div>
+                <GlassCard className="p-8 h-full flex flex-col justify-between border-white/[0.03] hover:border-gold/20 transition-all">
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-start">
+                      <Badge color="silver">{item.category}</Badge>
+                      <p className="font-serif text-gold text-lg font-black">₦{item.price.toLocaleString()}</p>
+                    </div>
+                    <h4 className="text-xl font-serif text-white group-hover:text-gold transition-colors">{item.name}</h4>
+                    <p className="text-xs text-silver leading-relaxed font-light opacity-60">{item.description}</p>
+                  </div>
+                  <div className="mt-8 pt-6 border-t border-white/5 flex justify-between items-center">
+                    <p className="text-[10px] uppercase tracking-widest text-silver font-bold">Stock: {item.stock}</p>
+                    <GoldButton 
+                      onClick={() => addToCart(item)}
+                      disabled={item.stock <= 0}
+                      className="py-3 px-6"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>Add</span>
+                        <ChevronRightIcon className="w-3 h-3" />
+                      </div>
+                    </GoldButton>
+                  </div>
+                </GlassCard>
               </motion.div>
             ))}
           </AnimatePresence>
         </div>
-      </div>
+      </main>
 
-      <aside className="w-96 border-l border-white/[0.03] bg-secondary p-10 flex flex-col glass-card border-none shadow-2xl">
-        <h3 className="text-xs font-bold text-silver uppercase tracking-[0.3em] mb-10 border-b border-white/5 pb-5 italic">Selection Registry</h3>
-        <div className="flex-1 overflow-y-auto space-y-8 no-scrollbar">
-          {cart.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center opacity-10 py-20 text-white">
-              <ShoppingBag size={56} strokeWidth={1} />
-              <p className="mt-6 text-[10px] uppercase tracking-[0.4em] font-black">Archive Empty</p>
+      {/* Cart Sidebar */}
+      <aside className="w-[450px] border-l border-white/[0.03] bg-black/40 backdrop-blur-3xl p-10 flex flex-col z-40">
+        <div className="flex-1 flex flex-col min-h-0">
+          <header className="mb-10 flex justify-between items-center border-b border-white/5 pb-6">
+            <div className="flex items-center gap-4">
+              <ShoppingBagIcon className="w-6 h-6 text-gold" />
+              <h3 className="text-sm font-black uppercase tracking-[0.4em] text-white">Registry</h3>
             </div>
-          ) : (
-            <AnimatePresence>
-              {cart.map((item) => (
-                <motion.div 
-                  key={item.id}
-                  layout
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  className="flex flex-col gap-4 p-5 bg-primary/40 rounded-2xl border border-white/[0.03] text-white group hover:border-emerald/10 transition-colors"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-sm font-bold text-white group-hover:text-emerald transition-colors">{item.name}</p>
-                      <p className="text-[10px] text-secondary font-mono mt-1">₦{item.price.toLocaleString()} ea</p>
+            <Badge color="gold">{cart.reduce((a, b) => a + b.quantity, 0)} Items</Badge>
+          </header>
+
+          <div className="flex-1 overflow-y-auto space-y-6 no-scrollbar pr-2">
+            {cart.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center opacity-20 py-20">
+                <ShoppingBagIcon className="w-16 h-16 text-silver mb-6" />
+                <p className="text-[10px] uppercase tracking-[0.5em] font-black">Archive Empty</p>
+              </div>
+            ) : (
+              <AnimatePresence mode="popLayout">
+                {cart.map((item) => (
+                  <motion.div
+                    layout
+                    key={item.id}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl space-y-4 hover:bg-white/[0.05] transition-all"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-1">
+                        <p className="text-sm font-bold text-white">{item.name}</p>
+                        <p className="text-[9px] text-silver font-mono">₦{item.price.toLocaleString()} ea</p>
+                      </div>
+                      <p className="text-sm font-serif text-gold font-black">₦{(item.price * item.quantity).toLocaleString()}</p>
                     </div>
-                    <p className="text-sm font-serif text-emerald font-bold">₦{(item.price * item.quantity).toLocaleString()}</p>
-                  </div>
-                  
-                  <div className="flex justify-between items-center pt-2">
-                    <div className="flex items-center gap-4 bg-black/40 rounded-full px-4 py-1.5 border border-white/5">
-                      <motion.button whileHover={hover2X} onClick={() => updateQuantity(item.id, -1)} className="text-emerald hover:text-white transition-colors text-lg">-</motion.button>
-                      <motion.span 
-                        key={item.quantity}
-                        initial={{ scale: 1.2, color: "#10B981" }}
-                        animate={{ scale: 1, color: "#F2F2F7" }}
-                        className="text-xs font-mono w-5 text-center font-bold"
-                      >
-                        {item.quantity}
-                      </motion.span>
-                      <motion.button whileHover={hover2X} onClick={() => updateQuantity(item.id, 1)} className="text-emerald hover:text-white transition-colors text-lg">+</motion.button>
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-4 bg-black/40 rounded-xl px-4 py-2 border border-white/5">
+                        <button onClick={() => updateQuantity(item.id, -1)} className="text-gold hover:text-white transition-colors text-lg font-black">-</button>
+                        <span className="text-xs font-mono w-6 text-center font-bold text-white">{item.quantity}</span>
+                        <button onClick={() => updateQuantity(item.id, 1)} className="text-gold hover:text-white transition-colors text-lg font-black">+</button>
+                      </div>
+                      <button onClick={() => updateQuantity(item.id, -item.quantity)} className="text-[9px] uppercase tracking-widest text-red-400 hover:text-red-500 font-black transition-colors">Archive</button>
                     </div>
-                    <motion.button 
-                      whileHover={hover2X}
-                      onClick={() => updateQuantity(item.id, -item.quantity)} 
-                      className="text-[9px] uppercase tracking-widest text-red-500/40 hover:text-red-500 font-black"
-                    >
-                      Delete
-                    </motion.button>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          )}
-        </div>
-        
-        <div className="mt-10 pt-8 border-t border-white/5 space-y-8">
-          <div className="space-y-3">
-            <div className="flex justify-between items-center text-[10px] uppercase tracking-[0.2em] text-secondary">
-              <span>Subtotal</span>
-              <span>₦{cart.reduce((s, i) => s + (i.price * i.quantity), 0).toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between items-center pt-2">
-              <span className="text-xs uppercase tracking-[0.4em] font-black text-silver">Total Settlement</span>
-              <motion.span 
-                key={cart.reduce((s, i) => s + (i.price * i.quantity), 0)}
-                initial={{ scale: 1.1 }}
-                animate={{ scale: 1 }}
-                className="text-4xl font-serif text-gold font-bold tracking-tighter"
-              >
-                ₦{cart.reduce((s, i) => s + (i.price * i.quantity), 0).toLocaleString()}
-              </motion.span>
-            </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            )}
           </div>
-          
-          <div className="space-y-4">
-            <motion.button 
-              whileHover={hoverButton2X}
-              whileTap={{ scale: 0.98 }}
-              onClick={initiateCheckout}
-              disabled={cart.length === 0 || isSubmitting}
-              className="w-full py-5 bg-gold text-black font-black uppercase tracking-[0.3em] text-[11px] rounded-2xl hover:brightness-110 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-2xl shadow-gold/20"
+
+          <div className="mt-10 pt-10 border-t border-white/5 space-y-8">
+            <div className="space-y-4">
+              <div className="flex justify-between items-center text-[10px] uppercase tracking-widest text-silver">
+                <span>Subtotal Settlement</span>
+                <span>₦{cart.reduce((s, i) => s + (i.price * i.quantity), 0).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs uppercase tracking-[0.4em] font-black text-white">Final Total</span>
+                <span className="text-4xl font-serif text-gold font-black tracking-tighter">
+                  ₦{cart.reduce((s, i) => s + (i.price * i.quantity), 0).toLocaleString()}
+                </span>
+              </div>
+            </div>
+
+            <GoldButton 
+              className="w-full py-6 text-[11px]" 
+              disabled={cart.length === 0}
+              onClick={() => setShowCheckout(true)}
             >
-              {isSubmitting ? "Processing..." : "Establish Reservation"}
-            </motion.button>
+              Establish Transmission
+            </GoldButton>
           </div>
-          {!user && cart.length > 0 && <p className="mt-4 text-[9px] text-center text-emerald/60 uppercase tracking-[0.3em] font-black italic">Portal Clearance Required</p>}
         </div>
+
+        {/* Live Order Status for Guest */}
+        {activeOrders.length > 0 && (
+          <div className="mt-10 pt-10 border-t border-white/5">
+            <h4 className="text-[10px] uppercase tracking-[0.4em] text-silver mb-6 font-black opacity-60">Active Transmissions</h4>
+            <div className="space-y-4">
+              {activeOrders.map(order => (
+                <div key={order.id} className="p-4 bg-emerald/5 border border-emerald/20 rounded-2xl flex justify-between items-center">
+                  <div>
+                    <p className="text-[9px] font-black text-white uppercase tracking-widest">Order {order.id.slice(-4).toUpperCase()}</p>
+                    <p className="text-[10px] text-emerald font-bold mt-1 uppercase tracking-widest">{order.status.replace('-', ' ')}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald animate-pulse" />
+                    <span className="text-[10px] font-black text-emerald uppercase tracking-widest">Syncing</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </aside>
 
       {/* Checkout Modal */}
-      <AnimatePresence>
-        {showCheckout && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/95 backdrop-blur-2xl">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="relative w-full max-w-3xl bg-secondary border border-white/5 rounded-[40px] overflow-hidden shadow-2xl"
-            >
-              {!isPaid ? (
-                <div className="p-16">
-                  <div className="flex justify-between items-start mb-16">
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-4">
-                        <CreditCard className="text-silver" size={28} />
-                        <h2 className="text-4xl font-serif text-white uppercase tracking-tighter">Settlement Terminal</h2>
-                      </div>
-                      <p className="text-secondary text-[11px] uppercase tracking-[0.5em] font-bold">Encrypted Bank Transfer</p>
-                    </div>
-                    <motion.button 
-                      whileHover={hover2X}
-                      onClick={() => setShowCheckout(false)}
-                      className="p-3 rounded-full border border-white/10 text-secondary hover:bg-white/10 transition-all"
-                    >
-                      <X size={22} />
-                    </motion.button>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-16 mb-12">
-                    <div className="space-y-10">
-                      <div className="p-8 bg-primary/40 rounded-[32px] border border-white/[0.03] space-y-6 shadow-inner">
-                        <div className="flex justify-between items-center">
-                          <span className="text-[10px] uppercase text-secondary tracking-widest font-bold">Institution</span>
-                          <span className="text-[11px] font-black text-white uppercase tracking-widest">Zenith Bank PLC</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-[10px] uppercase text-secondary tracking-widest font-bold">Archive No</span>
-                          <span className="text-2xl font-serif text-silver font-bold tracking-widest">1234567890</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-[10px] uppercase text-secondary tracking-widest font-bold">Benevolence</span>
-                          <span className="text-[11px] font-black text-white uppercase tracking-widest">Brightstar Cave Ltd</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-6 p-6 glass-emerald rounded-3xl border border-emerald/10">
-                        <Clock className="text-emerald animate-pulse" size={24} />
-                        <div>
-                          <p className="text-[10px] uppercase text-secondary tracking-[0.3em] font-bold">Transmission Window</p>
-                          <p className="text-2xl font-mono text-white font-black">{formatTime(timeLeft)}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col justify-between">
-                      <div className="space-y-6">
-                        <div className="flex justify-between text-secondary text-[11px] uppercase tracking-[0.3em] font-black">
-                          <span>Final Total</span>
-                          <span className="text-emerald font-bold">₦{cart.reduce((s, i) => s + (i.price * i.quantity), 0).toLocaleString()}</span>
-                        </div>
-                        <div className="h-px bg-white/5 w-full" />
-                        <p className="text-xs text-secondary leading-relaxed font-light italic opacity-60">
-                          Please complete the high-tier transfer within the window to secure your sanctuary entry.
-                        </p>
-                      </div>
-
-                      <motion.button
-                        whileHover={hoverButton2X}
-                        onClick={handleConfirmPaid}
-                        disabled={isSubmitting || timeLeft <= 0}
-                        className="w-full py-6 bg-emerald text-black font-black uppercase text-[11px] tracking-[0.4em] rounded-2xl hover:brightness-110 flex items-center justify-center gap-4 transition-all mt-10 shadow-2xl shadow-emerald/20"
-                      >
-                        {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <>Transmission Confirmed <MoveRight size={18} /></>}
-                      </motion.button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-32 text-center space-y-10">
-                  <motion.div
-                    initial={{ scale: 0.8, rotate: -10, opacity: 0 }}
-                    animate={{ scale: 1, rotate: 0, opacity: 1 }}
-                    className="size-28 bg-emerald/10 rounded-full flex items-center justify-center mx-auto mb-10 border border-emerald/20 shadow-2xl shadow-emerald/10"
-                  >
-                    <CheckCircle2 className="text-emerald" size={56} />
-                  </motion.div>
-                  <h2 className="text-5xl font-serif text-white uppercase tracking-tighter">Signal Received</h2>
-                  <p className="text-secondary font-light max-w-sm mx-auto leading-relaxed text-lg">
-                    Your reservation transmission has been dispatched to the concierge terminal.
-                  </p>
-                  <div className="inline-block px-6 py-2 bg-emerald/5 border border-emerald/10 rounded-full text-[11px] text-emerald font-mono uppercase tracking-[0.5em] mt-6">
-                    TRACKING: {orderId?.slice(0, 8).toUpperCase()}
-                  </div>
+      <GlassModal 
+        isOpen={showCheckout} 
+        onClose={() => setShowCheckout(false)} 
+        title="Protocol Settlement"
+      >
+        <div className="space-y-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-8">
+              <div className="space-y-4">
+                <label className="text-[10px] uppercase tracking-widest text-silver font-black">Terminal Identification</label>
+                <SilverInput 
+                  placeholder="Table or Room ID (e.g. VIP-04)" 
+                  icon={TableCellsIcon}
+                  value={tableId}
+                  onChange={(e: any) => setTableId(e.target.value)}
+                />
+              </div>
+              {role !== 'guest' && (
+                <div className="space-y-4">
+                  <label className="text-[10px] uppercase tracking-widest text-gold font-black">Staff Attribution</label>
+                  <SilverInput 
+                    placeholder="Staff Email ID" 
+                    icon={UserIcon}
+                    value={staffEmail}
+                    onChange={(e: any) => setStaffEmail(e.target.value)}
+                  />
+                  <p className="text-[8px] text-silver italic">Leave blank to use your own credentials: {user?.email}</p>
                 </div>
               )}
-            </motion.div>
+            </div>
+            
+            <div className="p-8 bg-white/[0.02] border border-white/5 rounded-[32px] space-y-6">
+              <div className="flex items-center gap-4 text-emerald mb-4">
+                <CreditCardIcon className="w-6 h-6" />
+                <h4 className="text-sm font-black uppercase tracking-widest">Direct Settlement</h4>
+              </div>
+              <p className="text-[10px] text-silver leading-relaxed font-light">
+                Please complete transfer to:
+                <br /><span className="text-white font-bold tracking-widest">Zenith Bank | 1234567890</span>
+                <br />Brightstar Cave Ltd
+              </p>
+              <div className="pt-6 border-t border-white/5 space-y-3">
+                <div className="flex justify-between text-[10px] font-black uppercase text-silver">
+                  <span>Grand Total</span>
+                  <span className="text-gold">₦{cart.reduce((s, i) => s + (i.price * i.quantity), 0).toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
           </div>
-        )}
-      </AnimatePresence>
+
+          <EmeraldButton 
+            className="w-full py-6 text-sm" 
+            onClick={handleCheckout}
+            disabled={isSubmitting || !tableId}
+          >
+            {isSubmitting ? "Synchronizing..." : "Initialize High-Tier Order"}
+          </EmeraldButton>
+        </div>
+      </GlassModal>
+
+      <Toast 
+        message={toast.message} 
+        type={toast.type} 
+        isVisible={toast.visible} 
+        onClose={() => setToast({ ...toast, visible: false })} 
+      />
     </div>
   );
 };

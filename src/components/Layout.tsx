@@ -2,112 +2,145 @@ import { ReactNode, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { 
-  LogIn, 
-  Wifi, 
-  ChevronRight, 
-  Clock,
-  Sun,
-  Moon,
-  MapPin,
-  Phone
-} from "lucide-react";
+  SunIcon,
+  MoonIcon,
+  MapPinIcon,
+  PhoneIcon,
+  ClockIcon,
+  UserIcon,
+  ArrowLeftOnRectangleIcon,
+  WifiIcon,
+  ChevronRightIcon
+} from "@heroicons/react/24/outline";
 import { User, signOut } from "firebase/auth";
-import { auth } from "../lib/firebase";
+import { auth, UserRole } from "../lib/firebase";
 import { LoginPopup } from "./LoginPopup";
+import { Badge } from "./design-system/Primitive";
 
 export const Layout = ({ 
   children, 
   user, 
+  role,
   theme, 
   toggleTheme 
 }: { 
   children: ReactNode, 
   user: User | null,
+  role: UserRole,
   theme: string,
   toggleTheme: () => void
 }) => {
   const location = useLocation();
-  const isAdmin = location.pathname.startsWith("/admin");
+  const isAdminView = location.pathname.startsWith("/admin");
   const [isLoginOpen, setIsLoginOpen] = useState(false);
 
-  // Common hover effect for 2X scale
-  const hover2X = {
-    scale: 2,
-    transition: { type: "spring", stiffness: 400, damping: 10 }
+  const navVariants = {
+    hidden: { opacity: 0, y: -20 },
+    visible: (i: number) => ({
+      opacity: 1,
+      y: 0,
+      transition: {
+        delay: i * 0.1,
+        duration: 0.8,
+        ease: [0.215, 0.61, 0.355, 1]
+      }
+    })
   };
 
+  const navItems = [
+    { to: "/", label: "Home" },
+    { to: "/about", label: "About Us" },
+    { to: "/orders", label: "Menu" },
+  ];
+
+  if (role !== 'guest') {
+    navItems.push({ to: "/admin", label: role === 'admin' ? "Admin" : "Staff" });
+  }
+
   return (
-    <div className="min-h-screen flex flex-col bg-primary text-primary">
+    <div className="min-h-screen flex flex-col bg-primary text-primary font-sans selection:bg-gold/30">
       <LoginPopup isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} />
+      
       {/* Header */}
-      <header className="h-20 flex items-center justify-between px-8 border-b border-white/[0.03] bg-black/20 backdrop-blur-md sticky top-0 z-50">
-        <div className="flex items-center gap-4">
-          <Link to="/" className="relative group">
+      <header className="h-24 flex items-center justify-between px-12 border-b border-white/[0.03] bg-black/40 backdrop-blur-xl sticky top-0 z-50">
+        <div className="flex items-center gap-6">
+          <Link to="/" className="relative group overflow-hidden rounded-full">
             <motion.div 
-              whileHover={hover2X}
-              className="w-12 h-12 rounded-full overflow-hidden border border-emerald/30 shadow-lg shadow-emerald/10"
+              whileHover={{ scale: 1.05 }}
+              className="w-14 h-14 rounded-full overflow-hidden border-2 border-gold/30 shadow-2xl shadow-gold/10"
             >
-              <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
+              <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
             </motion.div>
           </Link>
-          <h1 className="text-xl font-bold tracking-widest text-primary uppercase font-sans">Brightstar Cave</h1>
+          <div className="flex flex-col">
+            <h1 className="text-2xl font-serif font-black tracking-[0.15em] text-white uppercase leading-none">Brightstar Cave</h1>
+            <span className="text-[8px] uppercase tracking-[0.5em] text-gold mt-1 font-bold">Luxury Hospitality</span>
+          </div>
         </div>
         
-        <nav className="hidden md:flex items-center gap-10 text-[10px] font-bold tracking-[0.3em] uppercase">
-          {[
-            { to: "/", label: "Home" },
-            { to: "/about", label: "About Us" },
-            { to: "/orders", label: "Menu" },
-            { to: "/admin", label: "Management" }
-          ].map((nav) => (
-            <motion.div key={nav.to} whileHover={hover2X}>
+        <nav className="hidden lg:flex items-center gap-12">
+          {navItems.map((nav, i) => (
+            <motion.div 
+              key={nav.to} 
+              custom={i}
+              initial="hidden"
+              animate="visible"
+              variants={navVariants}
+            >
               <Link 
                 to={nav.to} 
-                className={`${location.pathname === nav.to ? "text-emerald border-b border-emerald pb-1" : "text-secondary hover:text-white"} transition-all`}
+                className={`text-[11px] font-black tracking-[0.4em] uppercase transition-all duration-300 relative group py-2
+                  ${location.pathname === nav.to ? "text-gold" : "text-silver/60 hover:text-gold"}`}
               >
-                {nav.label}
+                <span className="relative z-10">{nav.label}</span>
+                <motion.span 
+                  className="absolute bottom-0 left-0 w-full h-[2px] bg-gold origin-left"
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: location.pathname === nav.to ? 1 : 0 }}
+                  whileHover={{ scaleX: 1 }}
+                  transition={{ duration: 0.4 }}
+                />
               </Link>
             </motion.div>
           ))}
         </nav>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-8">
           <motion.button 
-            whileHover={hover2X}
+            whileHover={{ scale: 1.1, color: "#D4AF37" }}
             onClick={toggleTheme}
-            className="p-2 rounded-full hover:bg-white/5 transition-colors text-silver"
-            aria-label="Toggle Theme"
+            className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-silver hover:border-gold/30 transition-all"
           >
-            {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+            {theme === "dark" ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
           </motion.button>
           
-          <div className="text-right hidden sm:block border-r border-white/10 pr-6 mr-2">
-            <p className="text-[9px] uppercase tracking-widest text-secondary font-bold">Terminal</p>
-            <p className="text-[10px] text-emerald font-bold uppercase">Active</p>
-          </div>
-          
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4 border-l border-white/10 pl-8">
             {user ? (
-              <div className="flex items-center gap-3">
-                <div className="text-right hidden xs:block">
-                  <p className="text-[10px] font-bold text-primary leading-none">{user.displayName || user.email}</p>
-                  <button onClick={() => signOut(auth)} className="text-[9px] text-gold uppercase tracking-widest hover:opacity-70 font-bold">Sign Out</button>
+              <div className="flex items-center gap-4">
+                <div className="text-right hidden sm:block">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <p className="text-[10px] font-black text-white uppercase tracking-wider">{user.displayName || user.email?.split('@')[0]}</p>
+                    <Badge color={role === 'admin' ? 'gold' : role.startsWith('staff') ? 'emerald' : 'silver'}>{role.replace('_', ' ')}</Badge>
+                  </div>
+                  <button onClick={() => signOut(auth)} className="text-[9px] text-gold/60 hover:text-gold uppercase tracking-widest font-bold transition-colors flex items-center gap-1 ml-auto">
+                    Exit <ArrowLeftOnRectangleIcon className="w-3 h-3" />
+                  </button>
                 </div>
                 <motion.img 
-                  whileHover={hover2X}
-                  src={user.photoURL || `https://ui-avatars.com/api/?name=${user.email}&background=10B981&color=000`} 
+                  whileHover={{ scale: 1.05, borderColor: "#D4AF37" }}
+                  src={user.photoURL || `https://ui-avatars.com/api/?name=${user.email}&background=D4AF37&color=000`} 
                   alt="Avatar" 
-                  className="w-9 h-9 rounded-full border border-emerald/30 shadow-lg shadow-emerald/10 cursor-pointer" 
+                  className="w-10 h-10 rounded-full border-2 border-gold/20 shadow-xl shadow-gold/5 cursor-pointer object-cover" 
                   referrerPolicy="no-referrer" 
                 />
               </div>
             ) : (
               <motion.button 
-                whileHover={hover2X}
+                whileHover={{ backgroundColor: "rgba(212, 175, 53, 0.1)", borderColor: "#D4AF37", color: "#D4AF37" }}
                 onClick={() => setIsLoginOpen(true)}
-                className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-silver hover:text-white transition-all bg-white/5 px-4 py-2 rounded-lg border border-white/10"
+                className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.3em] text-silver bg-white/5 px-6 py-3 rounded-xl border border-white/10 transition-all"
               >
-                <LogIn size={14} />
+                <UserIcon className="w-4 h-4" />
                 Portal
               </motion.button>
             )}
@@ -116,14 +149,14 @@ export const Layout = ({
       </header>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <main className="flex-1 overflow-y-auto bg-primary">
+        <main className="flex-1 overflow-y-auto bg-primary no-scrollbar">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
               className="h-full"
             >
               {children}
@@ -131,97 +164,96 @@ export const Layout = ({
           </AnimatePresence>
         </main>
         
-        {!isAdmin && <Footer />}
+        {!isAdminView && <Footer />}
       </div>
     </div>
   );
 };
 
 const Footer = () => {
-  const hover2X = {
-    scale: 2,
-    transition: { type: "spring", stiffness: 400, damping: 10 }
-  };
-
   return (
-    <footer className="bg-secondary border-t border-white/[0.03] pt-24 pb-12 px-8">
+    <footer className="bg-secondary border-t border-white/[0.03] pt-32 pb-16 px-12">
       <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-16 mb-20">
-          <div className="col-span-1 md:col-span-1 space-y-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-20 mb-24">
+          <div className="col-span-1 md:col-span-1 space-y-10">
             <div className="flex flex-col gap-6">
               <motion.div 
-                whileHover={hover2X}
-                className="w-24 h-24 rounded-full overflow-hidden border border-emerald/30 shadow-xl shadow-emerald/10"
+                whileHover={{ scale: 1.05, rotate: 5 }}
+                className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-gold/30 shadow-2xl shadow-gold/10"
               >
                 <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
               </motion.div>
-              <h2 className="text-4xl font-black tracking-tighter uppercase font-sans text-white">Brightstar Cave</h2>
+              <h2 className="text-4xl font-serif font-black tracking-tighter uppercase text-white">Brightstar Cave</h2>
             </div>
-            <p className="text-secondary text-sm leading-relaxed font-light italic">
+            <p className="text-secondary text-sm leading-relaxed font-light italic opacity-70">
               "Where Stars Align in a Symphony of Metals & Nature."
             </p>
             <div className="flex gap-4">
               {[1, 2, 3].map(i => (
                 <motion.div 
                   key={i} 
-                  whileHover={hover2X}
-                  className="size-10 rounded-full border border-white/10 flex items-center justify-center text-secondary hover:text-emerald hover:border-emerald transition-all cursor-pointer bg-white/5"
+                  whileHover={{ scale: 1.1, backgroundColor: "rgba(212, 175, 53, 0.1)", borderColor: "#D4AF37" }}
+                  className="w-11 h-11 rounded-xl border border-white/10 flex items-center justify-center text-secondary hover:text-gold transition-all cursor-pointer bg-white/5"
                 >
-                  <Wifi size={18} />
+                  <WifiIcon className="w-5 h-5" />
                 </motion.div>
               ))}
             </div>
           </div>
+          
           <div>
-            <h5 className="text-white font-bold mb-8 text-xs uppercase tracking-[0.3em] border-b border-white/5 pb-2">Navigation</h5>
-            <ul className="space-y-4 text-secondary text-sm font-medium">
-              <li><motion.div whileHover={hover2X}><Link to="/about" className="hover:text-emerald transition-colors">Our Heritage</Link></motion.div></li>
-              <li><motion.div whileHover={hover2X}><Link to="/orders" className="hover:text-emerald transition-colors">Curated Menu</Link></motion.div></li>
-              <li><motion.div whileHover={hover2X}><button className="hover:text-emerald transition-colors text-left">Private Events</button></motion.div></li>
-              <li><motion.div whileHover={hover2X}><button className="hover:text-emerald transition-colors text-left">Membership</button></motion.div></li>
+            <h5 className="text-gold font-black mb-10 text-[10px] uppercase tracking-[0.5em] border-b border-gold/20 pb-4">Navigation</h5>
+            <ul className="space-y-5 text-secondary text-sm font-bold uppercase tracking-widest">
+              <li><Link to="/about" className="hover:text-gold transition-colors block">Our Heritage</Link></li>
+              <li><Link to="/orders" className="hover:text-gold transition-colors block">Curated Menu</Link></li>
+              <li><button className="hover:text-gold transition-colors block text-left">Private Events</button></li>
+              <li><button className="hover:text-gold transition-colors block text-left">Membership</button></li>
             </ul>
           </div>
+
           <div>
-            <h5 className="text-white font-bold mb-8 text-xs uppercase tracking-[0.3em] border-b border-white/5 pb-2">Visit Our Sanctuary</h5>
-            <ul className="space-y-6 text-secondary text-sm font-light">
-              <li className="flex gap-4 items-start">
-                <MapPin size={18} className="text-emerald shrink-0 mt-0.5" />
-                <span className="leading-relaxed">Road 3C Ogunfayo, <br />between Blenco/Limitless supermarket, <br />Lagos</span>
+            <h5 className="text-gold font-black mb-10 text-[10px] uppercase tracking-[0.5em] border-b border-gold/20 pb-4">Sanctuary Terminal</h5>
+            <ul className="space-y-8 text-secondary text-sm font-light">
+              <li className="flex gap-4 items-start group">
+                <MapPinIcon className="w-5 h-5 text-gold shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />
+                <span className="leading-relaxed group-hover:text-white transition-colors">Road 3C Ogunfayo, <br />between Blenco/Limitless, <br />Lagos</span>
               </li>
-              <li className="flex gap-4 items-start">
-                <Phone size={18} className="text-emerald shrink-0 mt-0.5" />
-                <span className="font-mono">09168858844 <br />Reservations Preferred</span>
+              <li className="flex gap-4 items-start group">
+                <PhoneIcon className="w-5 h-5 text-gold shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />
+                <span className="font-mono group-hover:text-white transition-colors">09168858844 <br />Reservations Preferred</span>
               </li>
-              <li className="flex gap-4 items-start">
-                <Clock size={18} className="text-emerald shrink-0 mt-0.5" />
-                <span>24/7 Concierge Available</span>
+              <li className="flex gap-4 items-start group">
+                <ClockIcon className="w-5 h-5 text-gold shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />
+                <span className="group-hover:text-white transition-colors">24/7 Concierge Terminal</span>
               </li>
             </ul>
           </div>
+
           <div>
-            <h5 className="text-white font-bold mb-8 text-xs uppercase tracking-[0.3em] border-b border-white/5 pb-2">Elite Circle</h5>
-            <p className="text-[11px] text-secondary mb-6 font-light leading-relaxed">Join for exclusive event transmissions and menu previews.</p>
+            <h5 className="text-gold font-black mb-10 text-[10px] uppercase tracking-[0.5em] border-b border-gold/20 pb-4">Elite Circle</h5>
+            <p className="text-[11px] text-secondary mb-8 font-light leading-relaxed opacity-60">Join for exclusive event transmissions and menu previews.</p>
             <div className="relative group">
               <input 
-                className="w-full bg-white/[0.02] border border-white/5 rounded-xl py-4 px-5 text-sm text-white focus:outline-none focus:border-emerald/30 transition-all pr-12" 
-                placeholder="Email Terminal" 
+                className="w-full bg-white/[0.02] border border-white/5 rounded-2xl py-5 px-6 text-sm text-white focus:outline-none focus:border-gold/30 transition-all pr-14 placeholder:text-white/10" 
+                placeholder="Email Frequency" 
                 type="email"
               />
               <motion.button 
-                whileHover={hover2X}
-                className="absolute right-3 top-3 p-1.5 text-emerald hover:text-white transition-transform"
+                whileHover={{ scale: 1.1, x: 5 }}
+                className="absolute right-4 top-4 p-1.5 text-gold hover:text-white transition-colors"
               >
-                <ChevronRight />
+                <ChevronRightIcon className="w-6 h-6" />
               </motion.button>
             </div>
           </div>
         </div>
-        <div className="border-t border-white/[0.03] pt-12 flex flex-col md:row justify-between items-center gap-8">
-          <p className="text-[10px] text-secondary uppercase tracking-[0.4em] font-bold opacity-50">© 2024 Brightstar Cave. Luxury Hospitality Management.</p>
-          <div className="flex gap-10 text-[10px] text-secondary uppercase tracking-[0.4em] font-bold">
-            <motion.button whileHover={hover2X} className="hover:text-white transition-colors">Privacy</motion.button>
-            <motion.button whileHover={hover2X} className="hover:text-white transition-colors">Terms</motion.button>
-            <motion.div whileHover={hover2X}><Link to="/admin" className="hover:text-white transition-colors text-gold">Staff Terminal</Link></motion.div>
+        
+        <div className="border-t border-white/[0.03] pt-16 flex flex-col lg:flex-row justify-between items-center gap-10">
+          <p className="text-[9px] text-secondary uppercase tracking-[0.5em] font-black opacity-40">© 2024 Brightstar Cave. Advanced Luxury Systems.</p>
+          <div className="flex gap-12 text-[9px] text-secondary uppercase tracking-[0.5em] font-black">
+            <button className="hover:text-gold transition-colors">Privacy</button>
+            <button className="hover:text-gold transition-colors">Terms</button>
+            <Link to="/admin" className="text-gold hover:brightness-125 transition-all">Staff Terminal</Link>
           </div>
         </div>
       </div>

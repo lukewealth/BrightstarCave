@@ -54,7 +54,7 @@ const features: Feature[] = [
     id: "snooker",
     title: "Vantage Snooker",
     subtitle: "Tactile Precision",
-    img: "/images/WhatsApp Image 2026-04-21 at 19.35.32 (7).jpeg",
+    img: "/images/snooker.jpg",
     desc: "Mahogany, leather, and championship-grade play. ₦10,000 per hour.",
     fullContent: "The Vantage Lounge features championship-standard tables with premium West of England cloth. Our lounge offers a curated selection of cigars and rare whiskies to complement your game. Whether you are a seasoned pro or a casual player, the ambiance of mahogany and leather provides the perfect backdrop for precision play.",
     icon: Trophy,
@@ -102,7 +102,7 @@ const heroSlides = [
     subtitle: "METALLIC FLOW"
   },
   {
-    img: "/images/WhatsApp Image 2026-04-21 at 19.35.32 (7).jpeg",
+    img: "/images/snooker.jpg",
     title: "Precision & Play",
     subtitle: "ELITE LEISURE"
   }

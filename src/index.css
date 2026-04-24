@@ -13,46 +13,50 @@
 }
 
 :root {
-  --bg-primary: #121212; /* Dark Grey Deep */
-  --bg-secondary: #1E1E1E; /* Dark Grey Surface */
+  /* Dark Theme (Default) - Emerald Green on Black/Dark Background */
+  --bg-primary: #050505;
+  --bg-secondary: #0A0A0B;
   --text-primary: #F2F2F7;
-  --text-secondary: #A1A1A6; /* Silver Text */
+  --text-secondary: #8E8E93;
   --gold: #D4AF37;
   --gold-muted: rgba(212, 175, 53, 0.15);
   --silver: #C0C0C0;
-  --silver-glow: rgba(192, 192, 192, 0.1);
   --emerald: #10B981;
   --emerald-muted: rgba(16, 185, 129, 0.1);
   --border-color: rgba(255, 255, 255, 0.05);
-  --glass-bg: rgba(18, 18, 18, 0.8);
+  --glass-bg: rgba(5, 5, 5, 0.8);
+  
+  --hover-accent: var(--emerald); /* Green for Dark background */
 }
 
 :root.light {
+  /* Light Theme - Emerald on Grey/Light Background */
   --bg-primary: #F2F2F7;
-  --bg-secondary: #FFFFFF;
-  --text-primary: #121212;
-  --text-secondary: #8E8E93;
+  --bg-secondary: #E5E5EA;
+  --text-primary: #1C1C1E;
+  --text-secondary: #3A3A3C;
   --gold: #AF8B1E;
   --gold-muted: rgba(175, 139, 30, 0.1);
-  --silver: #A1A1A6;
-  --silver-glow: rgba(161, 161, 166, 0.1);
+  --silver: #8E8E93;
   --emerald: #059669;
-  --emerald-muted: rgba(5, 150, 105, 0.1);
   --border-color: rgba(0, 0, 0, 0.05);
-  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-bg: rgba(242, 242, 247, 0.85);
+  
+  --hover-accent: var(--emerald); /* Changed from Gold to Green for Grey background */
 }
 
 @layer base {
   body {
     background-color: var(--bg-primary);
     color: var(--text-primary);
-    @apply antialiased transition-colors duration-700;
+    @apply antialiased transition-all duration-700 ease-in-out;
     font-family: var(--font-sans);
     overflow-x: hidden;
   }
 
   h1, h2, h3, h4, .font-serif {
     font-family: var(--font-serif);
+    letter-spacing: -0.02em;
   }
 }
 
@@ -69,27 +73,18 @@
   .bg-silver { background-color: var(--silver); }
   .bg-emerald { background-color: var(--emerald); }
 
-  .border-gold { border-color: var(--gold-muted); }
-  .border-silver { border-color: rgba(192, 192, 192, 0.1); }
-  .border-emerald { border-color: var(--emerald-muted); }
-
   .glass-card {
     background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid var(--border-color);
+    @apply backdrop-blur-2xl border border-white/[0.05];
   }
 
-  .glass-gold {
-    background: rgba(212, 175, 53, 0.02);
-    backdrop-filter: blur(12px);
-    border: 1px solid var(--gold-muted);
+  /* Active/Hover Inversion Logic */
+  .hover-trigger {
+    @apply transition-all duration-300 ease-in-out;
   }
-
-  .glass-emerald {
-    background: rgba(16, 185, 129, 0.02);
-    backdrop-filter: blur(12px);
-    border: 1px solid var(--emerald-muted);
+  
+  .hover-trigger:hover {
+    color: var(--hover-accent) !important;
   }
 
   .no-scrollbar::-webkit-scrollbar {
@@ -100,32 +95,19 @@
   }
 }
 
-/* Luxury Animations */
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
 }
-
-.animate-shimmer {
-  background: linear-gradient(90deg, transparent, var(--gold-muted), transparent);
-  background-size: 200% 100%;
-  animation: shimmer 3s infinite linear;
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
 }
-
-.gold-dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 9999px;
-  background-color: var(--gold);
-  box-shadow: 0 0 10px var(--gold);
+::-webkit-scrollbar-thumb {
+  background: var(--bg-secondary);
+  border-radius: 10px;
 }
-
-.emerald-dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 9999px;
-  background-color: var(--emerald);
-  box-shadow: 0 0 10px var(--emerald);
+::-webkit-scrollbar-thumb:hover {
+  background: var(--hover-accent);
 }
 
 .metallic-fade {

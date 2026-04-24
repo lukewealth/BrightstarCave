@@ -1,6 +1,17 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { LayoutDashboard, ShoppingBag, Utensils, Beer, Settings, ChevronRight, LayoutGrid, Users, Plus, Save, Trash2, CheckCircle2, ShieldAlert, ArrowRight } from "lucide-react";
+import { 
+  ChartBarIcon, 
+  UserGroupIcon, 
+  Square2StackIcon,
+  SparklesIcon,
+  ExclamationTriangleIcon,
+  ChevronRightIcon,
+  PlusIcon,
+  PencilSquareIcon,
+  TrashIcon,
+  ArrowPathIcon
+} from "@heroicons/react/24/outline";
 import { User } from "firebase/auth";
 import { 
   collection, 
@@ -11,328 +22,467 @@ import {
   doc, 
   updateDoc, 
   serverTimestamp,
-  getDocFromServer,
+  deleteDoc,
   setDoc,
-  deleteDoc
+  where,
+  addDoc
 } from "firebase/firestore";
-import { db, handleFirestoreError } from "../lib/firebase";
-import { Link } from "react-router-dom";
+import { db, getUserRole, UserRole, seedInventory } from "../lib/firebase";
 import { menuItems as initialMenu } from "../data/menu";
+import { 
+  GlassCard, 
+  GoldButton, 
+  EmeraldButton, 
+  SilverInput, 
+  Badge, 
+  SectionTitle, 
+  GlassModal, 
+  LuxuryTable, 
+  TabSystem, 
+  Toast 
+} from "../components/design-system/Primitive";
 
 export const AdminPortal = ({ user }: { user: User | null }) => {
+  const [role, setRole] = useState<UserRole | null>(null);
+  const [view, setView] = useState<'dashboard' | 'inventory' | 'staff' | 'orders'>('dashboard');
   const [orders, setOrders] = useState<any[]>([]);
-  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [view, setView] = useState<'dashboard' | 'kitchen' | 'bar' | 'inventory' | 'staff'>('dashboard');
-
   const [inventory, setInventory] = useState<any[]>([]);
+  const [staff, setStaff] = useState<any[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalType, setModalType] = useState<'item' | 'staff' | 'order'>('item');
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error', visible: boolean }>({ message: '', type: 'success', visible: false });
 
-  const hover2X = {
-    scale: 1.2,
-    transition: { type: "spring", stiffness: 400, damping: 10 }
-  };
-
-  const hoverButton2X = {
-    scale: 1.05,
-    transition: { type: "spring", stiffness: 400, damping: 10 }
-  };
+  // Stats calculation
+  const stats = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const todaysOrders = orders.filter(o => o.createdAt?.toDate() >= today);
+    const totalRevenue = todaysOrders.reduce((acc, curr) => acc + (curr.total || 0), 0);
+    const activeOrders = orders.filter(o => o.status !== 'served' && o.status !== 'cancelled').length;
+    const lowStock = inventory.filter(i => i.stock < 10).length;
+    
+    return { totalRevenue, activeOrders, lowStock, totalOrders: todaysOrders.length };
+  }, [orders, inventory]);
 
   useEffect(() => {
-    if (!user) {
-      setIsAdmin(false);
-      return;
+    if (user) {
+      getUserRole(user.uid, user.email).then(setRole);
+      seedInventory(initialMenu);
     }
-
-    const checkAdmin = async () => {
-      const env = (import.meta as any).env;
-      const adminEmail = env.VITE_ADMIN_EMAIL;
-      const staffEmail = env.VITE_STAFF_EMAIL;
-
-      
-      if (user.email === adminEmail || user.email === staffEmail) {
-        setIsAdmin(true);
-        return;
-      }
-      
-      const adminRef = doc(db, "admins", user.uid);
-      try {
-        const snap = await getDocFromServer(adminRef);
-        setIsAdmin(snap.exists());
-      } catch (err) {
-        console.error("Admin check failed:", err);
-        setIsAdmin(false);
-      }
-    };
-    checkAdmin();
   }, [user]);
 
   useEffect(() => {
-    if (isAdmin !== true) return;
+    if (!role || role === 'guest') return;
 
-    const q = query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(50));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setOrders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      setError(null);
-    }, (err) => setError("Terminal locked. Unauthorized access."));
-
-    const qInv = query(collection(db, "inventory"));
-    const unsubInv = onSnapshot(qInv, (snapshot) => {
-      if (snapshot.empty) {
-        setInventory(initialMenu);
-      } else {
-        setInventory(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      }
+    const qOrders = query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(50));
+    const unsubOrders = onSnapshot(qOrders, (snap) => {
+      setOrders(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
 
-    return () => {
-      unsubscribe();
-      unsubInv();
-    };
-  }, [isAdmin]);
+    const unsubInv = onSnapshot(collection(db, "inventory"), (snap) => {
+      setInventory(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
 
-  if (isAdmin === null) {
-    return (
-      <div className="h-full flex items-center justify-center bg-primary">
-        <div className="w-10 h-10 border-2 border-emerald/20 border-t-emerald rounded-full animate-spin shadow-lg shadow-emerald/10" />
-      </div>
-    );
-  }
-
-  if (isAdmin === false || error) {
-    return (
-      <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-primary">
-        <div className="size-20 rounded-3xl bg-red-500/5 border border-red-500/10 flex items-center justify-center mb-8">
-          <ShieldAlert size={40} className="text-red-500 opacity-80" />
-        </div>
-        <h3 className="text-3xl font-serif text-white mb-3 tracking-tighter">Access Denied</h3>
-        <p className="text-secondary max-w-sm font-light leading-relaxed mb-10 text-sm">
-          {error || "Your digital footprint is not recognized in the Command Dashboard."}
-        </p>
-        <motion.div whileHover={hover2X}>
-          <Link to="/" className="text-[11px] uppercase tracking-[0.4em] font-black text-emerald border-b-2 border-emerald/20 pb-2 hover:border-emerald transition-all">
-            Return to Sanctuary
-          </Link>
-        </motion.div>
-      </div>
-    );
-  }
-
-  const updateStatus = async (orderId: string, newStatus: string) => {
-    try {
-      await updateDoc(doc(db, "orders", orderId), { 
-        status: newStatus,
-        updatedAt: serverTimestamp()
+    if (role === 'admin') {
+      const unsubStaff = onSnapshot(collection(db, "admins"), (snap) => {
+        setStaff(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       });
-    } catch (error) {
-      handleFirestoreError(error, 'update', 'orders');
+      return () => { unsubOrders(); unsubInv(); unsubStaff(); };
+    }
+
+    return () => { unsubOrders(); unsubInv(); };
+  }, [role]);
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type, visible: true });
+  };
+
+  const handleUpdateItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (selectedItem.id) {
+        await updateDoc(doc(db, "inventory", selectedItem.id), selectedItem);
+        showToast("Item updated successfully");
+      } else {
+        const newId = `item-${Date.now()}`;
+        await setDoc(doc(db, "inventory", newId), { ...selectedItem, id: newId });
+        showToast("Item added successfully");
+      }
+      setIsModalOpen(false);
+    } catch (err) {
+      showToast("Operation failed", "error");
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch(status) {
-      case 'new': return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-      case 'pending-verification': return 'bg-purple-500/10 text-purple-400 border-purple-500/20 animate-pulse';
-      case 'preparing': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
-      case 'ready': return 'bg-emerald/10 text-emerald border-emerald/20';
-      case 'served': return 'bg-white/5 text-secondary border-white/10';
-      default: return 'bg-white/5 text-secondary border-white/10';
+  const handleAddStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await addDoc(collection(db, "admins"), selectedItem);
+      showToast("Staff added successfully");
+      setIsModalOpen(false);
+    } catch (err) {
+      showToast("Operation failed", "error");
     }
   };
 
-  const filteredOrders = view === 'dashboard' ? orders : orders.filter(o => o.status !== 'served');
+  if (!role || role === 'guest') {
+    return (
+      <div className="h-full flex items-center justify-center bg-primary p-20">
+        <GlassCard className="p-20 text-center space-y-8 max-w-lg">
+          <ExclamationTriangleIcon className="w-20 h-20 text-gold mx-auto animate-pulse" />
+          <h2 className="text-4xl font-serif text-white">Access Restricted</h2>
+          <p className="text-silver text-sm leading-relaxed">System protocols require administrative clearance for this terminal.</p>
+        </GlassCard>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-full bg-primary">
-      {/* Admin Sidebar */}
-      <aside className="w-72 border-r border-white/[0.03] bg-secondary p-8 flex flex-col justify-between shrink-0 glass-card border-none shadow-2xl">
-        <div className="space-y-12">
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.4em] text-silver mb-6 font-black opacity-60">Control Hub</p>
-            <nav className="space-y-2">
+    <div className="flex h-full bg-primary font-sans text-white overflow-hidden">
+      {/* Sidebar */}
+      <aside className="w-80 border-r border-white/[0.03] bg-black/40 p-10 flex flex-col justify-between backdrop-blur-3xl z-50">
+        <div className="space-y-16">
+          <div className="px-4">
+            <p className="text-[10px] uppercase tracking-[0.6em] text-gold mb-10 font-black opacity-60">Operations Hub</p>
+            <nav className="space-y-3">
               {[
-                { id: 'dashboard', icon: LayoutDashboard, label: 'Analytics' },
-                { id: 'inventory', icon: LayoutGrid, label: 'Resources' },
-                { id: 'staff', icon: Users, label: 'Personnel' },
-              ].map((item) => (
-                <motion.button 
+                { id: 'dashboard', icon: ChartBarIcon, label: 'Analytics' },
+                { id: 'orders', icon: ArrowPathIcon, label: 'Live Orders' },
+                { id: 'inventory', icon: Square2StackIcon, label: 'Inventory' },
+                { id: 'staff', icon: UserGroupIcon, label: 'Staff Management', adminOnly: true },
+              ].filter(item => !item.adminOnly || role === 'admin').map((item) => (
+                <button 
                   key={item.id}
-                  whileHover={hoverButton2X}
                   onClick={() => setView(item.id as any)}
-                  className={`w-full flex items-center gap-4 text-[11px] p-4 rounded-2xl transition-all uppercase tracking-widest font-bold ${view === item.id ? 'bg-emerald text-black shadow-xl shadow-emerald/10' : 'text-silver hover:text-white hover:bg-white/[0.02]'}`}
+                  className={`w-full flex items-center gap-5 text-[11px] p-5 rounded-2xl transition-all uppercase tracking-[0.2em] font-black ${view === item.id ? 'bg-gold text-black shadow-2xl shadow-gold/20' : 'text-silver hover:bg-white/5 hover:text-gold'}`}
                 >
-                  <item.icon size={18} />
+                  <item.icon className="w-5 h-5" />
                   <span>{item.label}</span>
-                </motion.button>
+                </button>
               ))}
             </nav>
           </div>
 
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.4em] text-silver mb-6 font-black opacity-60">Field Stations</p>
-            <nav className="space-y-2">
-              <motion.button whileHover={hoverButton2X} onClick={() => setView('kitchen')} className={`w-full flex items-center gap-4 text-[11px] p-4 rounded-2xl transition-all uppercase tracking-widest font-bold ${view === 'kitchen' ? 'bg-primary border border-emerald/20 text-emerald shadow-lg shadow-emerald/5' : 'text-silver hover:text-white'}`}>
-                <Utensils size={18} />
-                <span>Kitchen Terminal</span>
-              </motion.button>
-              <motion.button whileHover={hoverButton2X} onClick={() => setView('bar')} className={`w-full flex items-center gap-4 text-[11px] p-4 rounded-2xl transition-all uppercase tracking-widest font-bold ${view === 'bar' ? 'bg-primary border border-emerald/20 text-emerald shadow-lg shadow-emerald/5' : 'text-silver hover:text-white'}`}>
-                <Beer size={18} />
-                <span>Beverage Queue</span>
-              </motion.button>
-            </nav>
+          <div className="p-8 rounded-[32px] bg-gradient-to-br from-gold/10 to-transparent border border-gold/20">
+            <div className="flex items-center gap-3 mb-4 text-gold">
+              <SparklesIcon className="w-5 h-5 animate-pulse" />
+              <span className="text-[10px] font-black uppercase tracking-widest">Intelligence</span>
+            </div>
+            <p className="text-[11px] text-silver leading-relaxed font-bold italic">
+              {stats.lowStock > 0 ? `Alert: ${stats.lowStock} items are low on stock. Restock recommended.` : "All systems operational. Efficiency at peak levels."}
+            </p>
+          </div>
+        </div>
+        
+        <div className="p-6 border-t border-white/5 flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-gold/20 flex items-center justify-center text-gold font-bold">
+            {user?.email?.[0].toUpperCase()}
+          </div>
+          <div className="overflow-hidden">
+            <p className="text-[10px] font-black text-white truncate">{user?.email}</p>
+            <p className="text-[8px] uppercase tracking-widest text-gold font-bold">{role.replace('_', ' ')}</p>
           </div>
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto p-16 space-y-16 no-scrollbar">
-        <header className="flex justify-between items-end border-b border-white/[0.03] pb-10">
-          <div>
-            <h3 className="text-silver text-[11px] uppercase tracking-[0.6em] font-black mb-4">Ashi Terminal v4.2</h3>
-            <h2 className="text-6xl font-serif text-white uppercase tracking-tighter">
-              {view === 'inventory' ? 'Stock Archive' : view === 'staff' ? 'Personnel' : 'Operations'}
-            </h2>
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto p-12 lg:p-20 space-y-16 no-scrollbar">
+        <header className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-10 pb-12 border-b border-white/5">
+          <div className="space-y-4">
+            <h3 className="text-gold text-[11px] uppercase tracking-[0.8em] font-black opacity-60">System Protocol v6.2</h3>
+            <SectionTitle 
+              subtitle="Management Terminal" 
+              title={view === 'dashboard' ? 'Daily Analytics' : view === 'inventory' ? 'Stock Control' : view === 'staff' ? 'Personnel' : 'Active Queue'} 
+            />
           </div>
-          <div className="text-right space-y-2">
-            <p className="text-[10px] uppercase tracking-[0.3em] text-silver font-bold">Authorized User</p>
-            <p className="text-sm font-mono text-emerald font-bold">{user?.email}</p>
+          
+          <div className="flex gap-8">
+            <div className="text-right">
+              <p className="text-[9px] uppercase tracking-widest text-silver mb-1">Today's Revenue</p>
+              <p className="text-3xl font-serif text-gold font-black">₦{stats.totalRevenue.toLocaleString()}</p>
+            </div>
+            <div className="text-right border-l border-white/10 pl-8">
+              <p className="text-[9px] uppercase tracking-widest text-silver mb-1">Total Sales</p>
+              <p className="text-3xl font-serif text-white font-black">{stats.totalOrders}</p>
+            </div>
           </div>
         </header>
 
-        {view === 'dashboard' || view === 'kitchen' || view === 'bar' ? (
-          <div className="grid grid-cols-1 gap-8">
+        {view === 'dashboard' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+            <GlassCard className="lg:col-span-2 p-12 relative group">
+              <div className="relative z-10 space-y-10">
+                <div className="flex items-center gap-4 text-gold">
+                  <SparklesIcon className="w-8 h-8" />
+                  <h4 className="text-2xl font-serif uppercase tracking-widest">Performance Insights</h4>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                  <div className="space-y-4">
+                    <p className="text-[10px] uppercase tracking-[0.4em] text-silver font-black">Average Fulfillment</p>
+                    <p className="text-5xl font-serif text-white font-black">14.5<span className="text-xl">min</span></p>
+                    <Badge color="emerald">Optimal</Badge>
+                  </div>
+                  <div className="space-y-4">
+                    <p className="text-[10px] uppercase tracking-[0.4em] text-silver font-black">Peak Hour</p>
+                    <p className="text-5xl font-serif text-gold font-black">20:00</p>
+                    <p className="text-[10px] text-silver italic">Based on 7-day trend</p>
+                  </div>
+                </div>
+              </div>
+            </GlassCard>
+
+            <div className="space-y-10">
+              <GlassCard className="p-8 border-purple-500/20 bg-purple-500/5">
+                <div className="flex items-center gap-4 text-purple-400 mb-6">
+                  <ExclamationTriangleIcon className="w-6 h-6 animate-pulse" />
+                  <h4 className="text-sm font-black uppercase tracking-widest">Critical Alerts</h4>
+                </div>
+                <div className="space-y-4">
+                  {stats.lowStock > 0 && (
+                    <div className="p-4 bg-black/40 rounded-2xl border border-white/5 flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-silver">Low Stock Items</span>
+                      <Badge color="red">{stats.lowStock}</Badge>
+                    </div>
+                  )}
+                  <div className="p-4 bg-black/40 rounded-2xl border border-white/5 flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-silver">Active Queue</span>
+                    <Badge color="gold">{stats.activeOrders}</Badge>
+                  </div>
+                </div>
+              </GlassCard>
+            </div>
+          </div>
+        )}
+
+        {view === 'inventory' && (
+          <div className="space-y-10">
+            <div className="flex justify-between items-center">
+              <TabSystem 
+                tabs={[
+                  { id: 'all', label: 'All Items' },
+                  { id: 'bar', label: 'Bar' },
+                  { id: 'kitchen', label: 'Kitchen' },
+                  { id: 'hotel', label: 'Hotel' }
+                ]} 
+                activeTab="all" 
+                onChange={() => {}} 
+              />
+              <GoldButton onClick={() => { setModalType('item'); setSelectedItem({}); setIsModalOpen(true); }}>
+                <div className="flex items-center gap-2">
+                  <PlusIcon className="w-4 h-4" />
+                  <span>Add Resource</span>
+                </div>
+              </GoldButton>
+            </div>
+
+            <LuxuryTable headers={['Item Name', 'Category', 'Price', 'Stock', 'Actions']}>
+              {inventory.map((item) => (
+                <tr key={item.id} className="group hover:bg-white/[0.02] transition-colors">
+                  <td className="px-8 py-6">
+                    <div>
+                      <p className="text-sm font-bold text-white">{item.name}</p>
+                      <p className="text-[9px] uppercase tracking-widest text-silver">{item.type}</p>
+                    </div>
+                  </td>
+                  <td className="px-8 py-6">
+                    <Badge color="silver">{item.category}</Badge>
+                  </td>
+                  <td className="px-8 py-6 font-serif text-white">₦{item.price.toLocaleString()}</td>
+                  <td className="px-8 py-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-20 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full rounded-full ${item.stock < 10 ? 'bg-red-500' : item.stock < 20 ? 'bg-gold' : 'bg-emerald'}`}
+                          style={{ width: `${Math.min(item.stock, 100)}%` }}
+                        />
+                      </div>
+                      <span className={`text-[10px] font-black ${item.stock < 10 ? 'text-red-400' : 'text-silver'}`}>{item.stock}</span>
+                    </div>
+                  </td>
+                  <td className="px-8 py-6">
+                    <div className="flex gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => { setSelectedItem(item); setModalType('item'); setIsModalOpen(true); }} className="text-silver hover:text-gold transition-colors"><PencilSquareIcon className="w-5 h-5" /></button>
+                      <button className="text-silver hover:text-red-400 transition-colors"><TrashIcon className="w-5 h-5" /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </LuxuryTable>
+          </div>
+        )}
+
+        {view === 'staff' && (
+          <div className="space-y-10">
+            <div className="flex justify-between items-center">
+              <h4 className="text-xl font-serif uppercase tracking-widest text-gold">Personnel Registry</h4>
+              <GoldButton onClick={() => { setModalType('staff'); setSelectedItem({}); setIsModalOpen(true); }}>
+                <div className="flex items-center gap-2">
+                  <UserGroupIcon className="w-4 h-4" />
+                  <span>Onboard Staff</span>
+                </div>
+              </GoldButton>
+            </div>
+
+            <LuxuryTable headers={['Employee', 'Role', 'Status', 'Actions']}>
+              {staff.map((member) => (
+                <tr key={member.id} className="group hover:bg-white/[0.02] transition-colors">
+                  <td className="px-8 py-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center font-bold text-silver">
+                        {member.email[0].toUpperCase()}
+                      </div>
+                      <span className="text-sm font-bold text-white">{member.email}</span>
+                    </div>
+                  </td>
+                  <td className="px-8 py-6">
+                    <Badge color={member.role === 'admin' ? 'gold' : 'purple'}>{member.role.replace('_', ' ')}</Badge>
+                  </td>
+                  <td className="px-8 py-6">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                      <span className="text-[10px] font-black text-silver uppercase tracking-widest">Active</span>
+                    </div>
+                  </td>
+                  <td className="px-8 py-6 text-silver">
+                    <button className="hover:text-red-400 transition-colors"><TrashIcon className="w-5 h-5" /></button>
+                  </td>
+                </tr>
+              ))}
+            </LuxuryTable>
+          </div>
+        )}
+
+        {view === 'orders' && (
+          <div className="space-y-8">
             <AnimatePresence mode="popLayout">
-              {filteredOrders.map((order, i) => (
+              {orders.map((order, i) => (
                 <motion.div 
                   layout
-                  key={order.id} 
-                  initial={{ opacity: 0, y: 30 }}
+                  key={order.id}
+                  initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className={`glass-card rounded-[40px] overflow-hidden border transition-all duration-500 ${order.status === 'pending-verification' ? 'border-purple-500/20 bg-purple-500/[0.02]' : 'border-white/[0.03] hover:border-emerald/20'}`}
+                  className="p-8 rounded-[32px] bg-secondary/20 border border-white/5 hover:border-gold/30 transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-8 group"
                 >
-                  <div className="p-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-10">
-                    <div className="flex items-center gap-10">
-                      <div className="size-20 rounded-[28px] bg-primary border border-white/[0.05] flex items-center justify-center font-serif text-3xl font-bold text-white shadow-2xl">
-                        {order.table?.split('-').pop()}
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-5">
-                          <h5 className="font-bold text-2xl text-white tracking-tight">{order.userName || "VIP Guest"}</h5>
-                          <span className={`text-[10px] px-4 py-1.5 rounded-full border uppercase font-black tracking-widest ${getStatusColor(order.status)}`}>
-                            {order.status.replace('-', ' ')}
-                          </span>
-                        </div>
-                        <p className="text-xs text-silver tracking-[0.2em] uppercase font-medium">
-                          {order.table} • {order.items?.length || 0} SELECTIONS • {order.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                      </div>
+                  <div className="flex items-center gap-8">
+                    <div className="w-20 h-20 rounded-[24px] bg-black border border-white/5 flex flex-col items-center justify-center">
+                      <p className="text-[8px] uppercase tracking-widest text-gold font-black mb-1">Room</p>
+                      <p className="text-3xl font-serif text-white font-black">{order.table?.split('-').pop()}</p>
                     </div>
-
-                    <div className="flex items-center gap-10 w-full lg:w-auto pt-10 lg:pt-0">
-                      <div className="text-right mr-10">
-                        <p className="text-[11px] uppercase tracking-[0.3em] text-silver font-black mb-2 opacity-60">Settlement</p>
-                        <p className="text-3xl font-serif text-gold font-bold">₦{order.total?.toLocaleString()}</p>
+                    <div>
+                      <div className="flex items-center gap-3 mb-2">
+                        <h5 className="text-xl font-bold text-white">{order.userName || "Guest"}</h5>
+                        <Badge color={order.status === 'served' ? 'emerald' : order.status === 'cancelled' ? 'red' : 'gold'}>
+                          {order.status.replace('-', ' ')}
+                        </Badge>
                       </div>
-                      <div className="flex gap-4">
-                        {order.status === 'pending-verification' && (
-                          <motion.button whileHover={hoverButton2X} onClick={() => updateStatus(order.id, 'new')} className="px-8 py-4 bg-purple-500 text-white text-[11px] uppercase font-black tracking-widest rounded-2xl hover:brightness-110 shadow-2xl shadow-purple-500/20 transition-all">Verify Payment</motion.button>
-                        )}
-                        {order.status === 'new' && (
-                          <motion.button whileHover={hoverButton2X} onClick={() => updateStatus(order.id, 'preparing')} className="px-8 py-4 bg-primary/50 border border-white/10 text-[11px] uppercase font-black tracking-widest text-white hover:bg-amber-500/20 hover:text-amber-400 rounded-2xl transition-all">Acknowledge</motion.button>
-                        )}
-                        {order.status === 'preparing' && (
-                          <motion.button whileHover={hoverButton2X} onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)} className="px-8 py-4 bg-gold text-black text-[11px] uppercase font-black tracking-widest rounded-2xl hover:brightness-110 shadow-2xl shadow-gold/20 transition-all">Command</motion.button>
-                        )}
-                      </div>
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-silver font-bold">
+                        {order.items?.length || 0} ITEMS • TOTAL: ₦{order.total?.toLocaleString()}
+                      </p>
                     </div>
                   </div>
                   
-                  {expandedOrderId === order.id && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="p-10 bg-primary/30 border-t border-white/[0.03] grid grid-cols-2 gap-12">
-                      <div className="space-y-6">
-                        <p className="text-[11px] uppercase tracking-[0.4em] text-emerald font-black">Selection Manifest</p>
-                        <ul className="space-y-4">
-                          {order.items?.map((it: string, idx: number) => (
-                            <li key={idx} className="flex justify-between text-base text-silver border-b border-white/[0.03] pb-3 font-light">
-                              <span>{it}</span>
-                              <span className="text-emerald font-mono text-xs font-bold tracking-widest">VERIFIED</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div className="flex flex-col justify-end gap-6">
-                        <motion.button whileHover={hoverButton2X} onClick={() => updateStatus(order.id, 'ready')} className="w-full py-5 bg-emerald text-black font-black uppercase text-[11px] tracking-widest rounded-2xl flex items-center justify-center gap-3">
-                          Advance to Ready <ArrowRight size={16} />
-                        </motion.button>
-                        <motion.button whileHover={hoverButton2X} onClick={() => setExpandedOrderId(null)} className="w-full py-5 border border-white/5 text-silver text-[11px] uppercase font-bold tracking-widest rounded-2xl hover:bg-white/[0.02]">Collapse Terminal</motion.button>
-                      </div>
-                    </motion.div>
-                  )}
+                  <div className="flex items-center gap-4 w-full md:w-auto">
+                    <select 
+                      value={order.status}
+                      onChange={(e) => updateDoc(doc(db, "orders", order.id), { status: e.target.value, updatedAt: serverTimestamp() })}
+                      className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-[10px] uppercase tracking-widest font-black text-silver focus:outline-none focus:border-gold/30"
+                    >
+                      <option value="new">New</option>
+                      <option value="preparing">Preparing</option>
+                      <option value="ready">Ready</option>
+                      <option value="served">Served</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                    <motion.button 
+                      whileHover={{ scale: 1.05 }}
+                      className="p-3 rounded-xl bg-white/5 border border-white/10 text-silver hover:text-gold"
+                    >
+                      <ChevronRightIcon className="w-5 h-5" />
+                    </motion.button>
+                  </div>
                 </motion.div>
               ))}
             </AnimatePresence>
           </div>
-        ) : view === 'inventory' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {inventory.map((item) => (
-              <div key={item.id} className="glass-card p-8 rounded-[40px] border border-white/[0.03] space-y-6 group hover:border-emerald/20 transition-all">
-                <div className="flex justify-between items-start">
-                  <span className="text-[10px] uppercase text-emerald font-black tracking-[0.3em] bg-emerald/5 px-3 py-1.5 rounded-full">{item.type}</span>
-                  <motion.button whileHover={hover2X} className="text-silver/40 hover:text-red-500 transition-colors"><Trash2 size={18} /></motion.button>
-                </div>
-                <h4 className="text-2xl font-serif text-white tracking-tight">{item.name}</h4>
-                <div className="flex justify-between items-center pt-6 border-t border-white/[0.03]">
-                  <span className="text-xl font-bold text-emerald tracking-tighter">₦{item.price.toLocaleString()}</span>
-                  <span className="text-xs text-silver font-mono">STOCK: {item.stock}</span>
-                </div>
-                <motion.button whileHover={hoverButton2X} className="w-full py-4 border border-white/5 text-silver text-[10px] uppercase font-black tracking-widest rounded-2xl hover:bg-emerald hover:text-black transition-all">Update Entry</motion.button>
-              </div>
-            ))}
-            <motion.button whileHover={hoverButton2X} className="h-full min-h-[250px] border-2 border-dashed border-white/[0.03] rounded-[40px] flex flex-col items-center justify-center gap-5 text-silver/40 hover:border-emerald/20 hover:text-emerald transition-all group">
-              <Plus size={40} className="group-hover:scale-110 transition-transform" />
-              <span className="text-[11px] uppercase font-black tracking-[0.4em]">Register Protocol</span>
-            </motion.button>
-          </div>
-        ) : (
-          <div className="max-w-3xl mx-auto space-y-12 pt-10">
-            <div className="glass-card p-12 rounded-[56px] border border-white/[0.03] shadow-2xl">
-              <h4 className="text-2xl font-serif text-white mb-10 flex items-center gap-4">
-                <Plus className="text-emerald" size={28} />
-                Personnel Registration
-              </h4>
-              <div className="space-y-8">
-                <div className="space-y-3">
-                  <label className="text-[11px] uppercase tracking-[0.4em] text-silver font-black ml-1">Archive ID</label>
-                  <input type="email" className="w-full bg-primary/50 border border-white/5 rounded-2xl py-5 px-8 text-sm text-white outline-none focus:border-emerald/30 transition-all placeholder:text-white/10 shadow-inner" placeholder="personnel@brightstar.cave" />
-                </div>
-                <div className="space-y-3">
-                  <label className="text-[11px] uppercase tracking-[0.4em] text-silver font-black ml-1">Credential Key</label>
-                  <input type="text" className="w-full bg-primary/50 border border-white/5 rounded-2xl py-5 px-8 text-sm text-white outline-none focus:border-emerald/30 transition-all placeholder:text-white/10 shadow-inner" placeholder="TEMPORARY-ACCESS" />
-                </div>
-                <motion.button whileHover={hoverButton2X} className="w-full py-6 bg-emerald text-black font-black uppercase text-[11px] tracking-[0.4em] rounded-2xl hover:brightness-110 shadow-2xl shadow-emerald/20 mt-6 transition-all">Authorize Clearance</motion.button>
-              </div>
-            </div>
-            
-            <div className="space-y-6">
-              <p className="text-[11px] uppercase tracking-[0.6em] text-silver font-black ml-6">Registry</p>
-              <div className="glass-card rounded-[48px] border border-white/[0.03] divide-y divide-white/[0.03] overflow-hidden shadow-2xl">
-                {[
-                  { email: 'lukeokagha@gmail.com', role: 'Elite Staff' },
-                  { email: 'admin@brightstar.cave', role: 'System Admin' }
-                ].map((st, idx) => (
-                  <div key={idx} className="p-8 flex justify-between items-center group hover:bg-white/[0.01] transition-colors">
-                    <div className="space-y-1">
-                      <p className="text-lg text-white font-bold tracking-tight">{st.email}</p>
-                      <p className="text-[10px] uppercase tracking-[0.3em] text-emerald font-black opacity-80">{st.role}</p>
-                    </div>
-                    <motion.button whileHover={hover2X} className="p-3 text-silver/30 hover:text-red-500 transition-all hover:scale-110"><Trash2 size={20} /></motion.button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
         )}
       </main>
+
+      {/* Modals */}
+      <GlassModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        title={modalType === 'item' ? 'Resource Configuration' : 'Personnel Onboarding'}
+      >
+        {modalType === 'item' ? (
+          <form onSubmit={handleUpdateItem} className="space-y-8">
+            <div className="grid grid-cols-2 gap-6">
+              <SilverInput 
+                placeholder="Item Name" 
+                value={selectedItem?.name || ''} 
+                onChange={(e: any) => setSelectedItem({ ...selectedItem, name: e.target.value })} 
+              />
+              <SilverInput 
+                placeholder="Price" 
+                type="number"
+                value={selectedItem?.price || ''} 
+                onChange={(e: any) => setSelectedItem({ ...selectedItem, price: Number(e.target.value) })} 
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-6">
+              <select 
+                value={selectedItem?.type || 'bar'}
+                onChange={(e) => setSelectedItem({ ...selectedItem, type: e.target.value })}
+                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white focus:outline-none focus:border-gold/30"
+              >
+                <option value="bar">Bar</option>
+                <option value="kitchen">Kitchen</option>
+                <option value="hotel">Hotel</option>
+              </select>
+              <SilverInput 
+                placeholder="Initial Stock" 
+                type="number"
+                value={selectedItem?.stock || ''} 
+                onChange={(e: any) => setSelectedItem({ ...selectedItem, stock: Number(e.target.value) })} 
+              />
+            </div>
+            <textarea 
+              placeholder="Description" 
+              value={selectedItem?.description || ''} 
+              onChange={(e) => setSelectedItem({ ...selectedItem, description: e.target.value })}
+              className="w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-sm text-white h-32 focus:outline-none focus:border-gold/30"
+            />
+            <GoldButton type="submit" className="w-full py-5 text-sm">Synchronize Protocol</GoldButton>
+          </form>
+        ) : (
+          <form onSubmit={handleAddStaff} className="space-y-8">
+            <SilverInput 
+              placeholder="Employee Email" 
+              value={selectedItem?.email || ''} 
+              onChange={(e: any) => setSelectedItem({ ...selectedItem, email: e.target.value })} 
+            />
+            <select 
+              value={selectedItem?.role || 'staff_waiter'}
+              onChange={(e) => setSelectedItem({ ...selectedItem, role: e.target.value })}
+              className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white focus:outline-none focus:border-gold/30"
+            >
+              <option value="staff_waiter">Staff Waiter</option>
+              <option value="staff_kitchen">Staff Kitchen</option>
+              <option value="staff_bar">Staff Bar</option>
+              <option value="admin">Admin</option>
+            </select>
+            <GoldButton type="submit" className="w-full py-5 text-sm">Onboard Employee</GoldButton>
+          </form>
+        )}
+      </GlassModal>
+
+      <Toast 
+        message={toast.message} 
+        type={toast.type} 
+        isVisible={toast.visible} 
+        onClose={() => setToast({ ...toast, visible: false })} 
+      />
     </div>
   );
 };

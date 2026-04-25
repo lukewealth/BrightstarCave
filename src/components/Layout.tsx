@@ -15,7 +15,7 @@ import {
 import { User, signOut } from "firebase/auth";
 import { auth, UserRole } from "../lib/firebase";
 import { LoginPopup } from "./LoginPopup";
-import { Badge } from "./design-system/Primitive";
+import { Badge, OptimizedImage } from "./design-system/Primitive";
 
 export const Layout = ({ 
   children, 
@@ -69,7 +69,13 @@ export const Layout = ({
               whileHover={{ scale: 1.05 }}
               className="w-14 h-14 rounded-full overflow-hidden border-2 border-gold/30 shadow-2xl shadow-gold/10"
             >
-              <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+              <OptimizedImage 
+                src="/logo.jpg" 
+                alt="Logo" 
+                aspectRatio="h-full" 
+                artistic={false}
+                className="w-full h-full" 
+              />
             </motion.div>
           </Link>
           <div className="flex flex-col">
@@ -126,13 +132,15 @@ export const Layout = ({
                     Exit <ArrowLeftOnRectangleIcon className="w-3 h-3" />
                   </button>
                 </div>
-                <motion.img 
-                  whileHover={{ scale: 1.05, borderColor: "#D4AF37" }}
-                  src={user.photoURL || `https://ui-avatars.com/api/?name=${user.email}&background=D4AF37&color=000`} 
-                  alt="Avatar" 
-                  className="w-10 h-10 rounded-full border-2 border-gold/20 shadow-xl shadow-gold/5 cursor-pointer object-cover" 
-                  referrerPolicy="no-referrer" 
-                />
+                <div className="w-10 h-10 rounded-full border-2 border-gold/20 shadow-xl overflow-hidden">
+                  <OptimizedImage 
+                    src={user.photoURL || `https://ui-avatars.com/api/?name=${user.email}&background=D4AF37&color=000`} 
+                    alt="Avatar" 
+                    aspectRatio="h-full"
+                    artistic={false}
+                    className="w-full h-full"
+                  />
+                </div>
               </div>
             ) : (
               <motion.button 
@@ -181,7 +189,13 @@ const Footer = () => {
                 whileHover={{ scale: 1.05, rotate: 5 }}
                 className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-gold/30 shadow-2xl shadow-gold/10"
               >
-                <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" />
+                <OptimizedImage 
+                  src="/logo.jpg" 
+                  alt="Logo" 
+                  aspectRatio="h-full" 
+                  artistic={false}
+                  className="w-full h-full" 
+                />
               </motion.div>
               <h2 className="text-4xl font-serif font-black tracking-tighter uppercase text-white">Brightstar Cave</h2>
             </div>

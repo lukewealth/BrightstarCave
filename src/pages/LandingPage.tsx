@@ -17,6 +17,7 @@ import {
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence, useScroll, useTransform } from "motion/react";
 import { useState, useEffect, useRef } from "react";
+import { OptimizedImage } from "../components/design-system/Primitive";
 
 interface Feature {
   id: string;
@@ -34,7 +35,7 @@ const features: Feature[] = [
     id: "garden",
     title: "The Zen Garden",
     subtitle: "Emerald Peace",
-    img: "/images/WhatsApp Image 2026-04-21 at 19.35.31 (1).jpeg",
+    img: "/images/IMG_1832.HEIC",
     desc: "A sanctuary where the Serengeti whisper meets the Kyoto breeze.",
     fullContent: "The Zen Garden is designed as a meditative space for our guests. Featuring tropical flora from across the African continent and minimalist stone elements inspired by Kyoto's famous gardens, it offers a unique atmosphere for afternoon tea or evening cocktails under the stars.",
     icon: Leaf,
@@ -44,7 +45,7 @@ const features: Feature[] = [
     id: "pool",
     title: "Celestial Pool",
     subtitle: "Silver & Serenity",
-    img: "/images/IMG_0093 2.PNG",
+    img: "/images/IMG_1752.HEIC",
     desc: "Dive into a temperature-controlled infinity experience under the Lagos skyline. ₦15,000 Access.",
     fullContent: "Our temperature-controlled infinity pool offers panoramic views of Victoria Island. Guests enjoy all-day access with premium towel service, specialized poolside Afro-Asian snacks, and an underwater sound system playing curated ambient beats.",
     icon: Sun,
@@ -64,7 +65,7 @@ const features: Feature[] = [
     id: "suites",
     title: "Celestial Suites",
     subtitle: "Golden Living",
-    img: "/images/WhatsApp Image 2026-04-21 at 19.35.32 (10).jpeg",
+    img: "/images/IMG_1775 2.HEIC",
     desc: "VIP apartments featuring PS5 gaming and 24/7 concierge. Starting ₦50,000.",
     fullContent: "Our apartments range from 1-bedroom executive studios (₦50,000) to 3-bedroom VIP penthouses (₦150,000). Each unit features smart home integration, private balconies overlooking the city, 24/7 concierge service, and high-speed fiber internet.",
     icon: Home,
@@ -74,7 +75,7 @@ const features: Feature[] = [
     id: "kitchen",
     title: "Silk Road Kitchen",
     subtitle: "Crossroads",
-    img: "/images/WhatsApp Image 2026-04-21 at 19.35.32 (1).jpeg",
+    img: "/images/IMG_1793.HEIC",
     desc: "Bold African spice palette applied with meticulous Asian precision.",
     fullContent: "Headed by award-winning chefs, our kitchen serves a rotating seasonal menu. Signature dishes include Suya-spiced Wagyu Ribeye, Miso-glazed Jollof Risotto, and Peri-Peri Gyoza. Every plate is a crossroads of flavor, meticulously plated for visual and sensory impact.",
     icon: Utensils,
@@ -83,28 +84,30 @@ const features: Feature[] = [
 ];
 
 const hubspotImages = [
-  "/images/WhatsApp Image 2026-04-21 at 19.35.32 (4).jpeg",
-  "/images/WhatsApp Image 2026-04-21 at 19.35.32 (5).jpeg",
-  "/images/WhatsApp Image 2026-04-21 at 19.35.32 (6).jpeg",
-  "/images/WhatsApp Image 2026-04-21 at 19.35.32 (7).jpeg",
-  "/images/WhatsApp Image 2026-04-21 at 19.35.32 (8).jpeg"
+  "/images/IMG_1833.HEIC",
+  "/images/IMG_1834.HEIC",
+  "/images/IMG_1835.HEIC",
+  "/images/IMG_1836.HEIC",
+  "/images/IMG_1842.HEIC",
+  "/images/IMG_1753.HEIC",
+  "/images/IMG_1754.HEIC"
 ];
 
 const heroSlides = [
   {
-    img: "/images/WhatsApp Image 2026-04-21 at 19.35.31 (1).jpeg",
+    img: "/images/IMG_1837.HEIC",
+    title: "Vantage Nightfall",
+    subtitle: "ATMOSPHERIC SYNCHRONIZATION"
+  },
+  {
+    img: "/images/IMG_1832.HEIC",
     title: "Silver Skies, Golden Earth",
     subtitle: "SYMPHONY OF ELEMENTS"
   },
   {
-    img: "/images/IMG_0093 2.PNG",
+    img: "/images/IMG_1752.HEIC",
     title: "Aquatic Serenity",
     subtitle: "METALLIC FLOW"
-  },
-  {
-    img: "/images/snooker.jpg",
-    title: "Precision & Play",
-    subtitle: "ELITE LEISURE"
   }
 ];
 
@@ -137,18 +140,18 @@ export const LandingPage = () => {
   
   const heroRef = useRef(null);
   const { scrollYProgress } = useScroll({ target: heroRef });
-  const y = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
+  const y = useTransform(scrollYProgress, [0, 1], ["0%", "30%"]);
 
   useEffect(() => {
     const slideTimer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
-    }, 6000);
+    }, 8000);
     const factTimer = setInterval(() => {
       setActiveFact((prev) => (prev + 1) % funnyFacts.length);
     }, 4000);
     const hubspotTimer = setInterval(() => {
       setHubspotIndex((prev) => (prev + 1) % hubspotImages.length);
-    }, 3000);
+    }, 5000);
     return () => {
       clearInterval(slideTimer);
       clearInterval(factTimer);
@@ -162,8 +165,14 @@ export const LandingPage = () => {
     { text: "Legend says our 3-Bedroom suite has a hidden portal to a PS6 prototype.", icon: Gamepad2 }
   ];
 
+  const healthTips = [
+    { title: "Afro-Asian Wellness", text: "Ginger and Turmeric in our fusion dishes are your best friends for gut health and immunity.", icon: Heart },
+    { title: "Active Play", text: "A focused game of Snooker can burn up to 100 calories per hour of walking and stretching.", icon: Trophy },
+    { title: "Hydration Logic", text: "Balance is key: For every signature cocktail at The Obsidian, enjoy a glass of our chilled hibiscus water.", icon: Sun }
+  ];
+
   return (
-    <div className="bg-primary text-primary min-h-screen">
+    <div className="bg-primary text-primary min-h-screen selection:bg-gold/20">
       {/* Hero Section with Parallax */}
       <section ref={heroRef} className="relative h-screen w-full overflow-hidden">
         <AnimatePresence mode="wait">
@@ -172,15 +181,17 @@ export const LandingPage = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 1.5 }}
+            transition={{ duration: 1.5, ease: [0.22, 1, 0.36, 1] }}
             className="absolute inset-0 z-0"
           >
             <motion.div style={{ y }} className="absolute inset-0">
-              <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-primary z-10" />
-              <img
+              <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/20 to-primary z-10" />
+              <OptimizedImage
                 src={heroSlides[currentSlide].img}
                 alt="Hero"
-                className="w-full h-full object-cover scale-110"
+                aspectRatio="h-full"
+                artistic={false}
+                className="w-full h-full scale-110"
               />
             </motion.div>
           </motion.div>
@@ -189,9 +200,10 @@ export const LandingPage = () => {
         <div className="relative z-20 h-full flex flex-col items-center justify-center text-center px-6">
           <motion.div
             key={`content-${currentSlide}`}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
+            initial={{ opacity: 0, scale: 0.98, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 1.02, y: -20 }}
+            transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
             className="space-y-6"
           >
             <div className="flex justify-center mb-4">
@@ -221,7 +233,7 @@ export const LandingPage = () => {
               <button
                 key={i}
                 onClick={() => setCurrentSlide(i)}
-                className={`h-[2px] transition-all duration-500 ${currentSlide === i ? "w-16 bg-gold" : "w-4 bg-white/10"}`}
+                className={`h-[2px] transition-all duration-700 ${currentSlide === i ? "w-16 bg-gold" : "w-4 bg-white/10"}`}
               />
             ))}
           </div>
@@ -249,14 +261,16 @@ export const LandingPage = () => {
           </motion.div>
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
+            whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             className="relative"
           >
             <div className="absolute -inset-4 border border-silver translate-x-4 translate-y-4 opacity-10" />
-            <img 
-              src="/images/WhatsApp Image 2026-04-21 at 19.35.32 (10).jpeg" 
-              className="relative z-10 w-full aspect-[4/5] object-cover grayscale-[0.6] hover:grayscale-0 transition-all duration-700 rounded-2xl shadow-2xl" 
+            <OptimizedImage 
+              src="/images/IMG_1775 2.HEIC" 
+              alt="Philosophy"
+              aspectRatio="aspect-[4/5]"
+              className="relative z-10 w-full shadow-2xl" 
             />
           </motion.div>
         </div>
@@ -264,31 +278,37 @@ export const LandingPage = () => {
         {/* HubSpot Sleek Slider */}
         <div className="py-20">
           <SectionHeading subtitle="The Hubspot" title="Sleek Visual Flow" color="silver" />
-          <div className="relative h-[600px] rounded-[32px] overflow-hidden glass-emerald group border border-white/5">
+          <div className="relative h-[600px] rounded-[32px] overflow-hidden glass-emerald group border border-white/5 bg-black/20">
             <AnimatePresence mode="wait">
               <motion.div
                 key={hubspotIndex}
-                initial={{ opacity: 0, x: 100 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -100 }}
-                transition={{ duration: 0.8, ease: "anticipate" }}
+                initial={{ opacity: 0, scale: 1.05 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
                 className="absolute inset-0"
               >
-                <img src={hubspotImages[hubspotIndex]} className="w-full h-full object-cover grayscale-[0.2]" alt="Hubspot" />
-                <div className="absolute inset-0 bg-gradient-to-t from-bg-primary via-transparent to-transparent opacity-90" />
+                <OptimizedImage 
+                  src={hubspotImages[hubspotIndex]} 
+                  alt="Hubspot"
+                  aspectRatio="h-full"
+                  artistic={false}
+                  className="w-full h-full"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-primary via-transparent to-transparent opacity-90" />
               </motion.div>
             </AnimatePresence>
             
             <div className="absolute bottom-10 left-10 z-20">
               <p className="text-emerald font-mono text-[10px] tracking-[0.4em] mb-2 uppercase font-bold">ELEMENTAL FEED</p>
-              <h3 className="text-2xl font-serif text-white">Vibe Synchronization</h3>
+              <h3 className="text-2xl font-serif text-white uppercase tracking-widest">Vibe Synchronization</h3>
             </div>
 
             <div className="absolute bottom-10 right-10 z-20 flex gap-2">
               {hubspotImages.map((_, i) => (
                 <div 
                   key={i} 
-                  className={`size-1.5 rounded-full transition-all duration-500 ${hubspotIndex === i ? "w-8 bg-emerald" : "bg-white/10"}`} 
+                  className={`size-1.5 rounded-full transition-all duration-700 ${hubspotIndex === i ? "w-8 bg-emerald" : "bg-white/10"}`} 
                 />
               ))}
             </div>
@@ -347,12 +367,13 @@ export const LandingPage = () => {
                 i === 0 || i === 3 ? "md:col-span-7" : "md:col-span-5"
               } hover:border-emerald/20 transition-all`}
             >
-              <motion.img
+              <OptimizedImage
                 src={feature.img}
                 alt={feature.title}
-                className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 opacity-30 group-hover:opacity-100 grayscale-[1] group-hover:grayscale-0"
+                aspectRatio="h-full"
+                className="w-full h-full opacity-30 group-hover:opacity-100 transition-all duration-1000"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-bg-primary via-transparent to-transparent opacity-95" />
+              <div className="absolute inset-0 bg-gradient-to-t from-primary via-transparent to-transparent opacity-95" />
               
               <div className="absolute top-8 right-8">
                 <HeroStar color={i % 2 === 0 ? "text-emerald" : "text-gold"} />
@@ -382,6 +403,7 @@ export const LandingPage = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.8, ease: "anticipate" }}
                   className="flex items-start gap-8"
                 >
                   <div className="p-5 bg-silver/5 rounded-full text-silver shrink-0 border border-white/5">
@@ -427,23 +449,23 @@ export const LandingPage = () => {
       {/* Feature Detail Modal */}
       <AnimatePresence>
         {selectedFeature && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-bg-primary/98 backdrop-blur-2xl">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/98 backdrop-blur-2xl">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative w-full max-w-6xl bg-bg-secondary border border-white/5 rounded-[40px] overflow-hidden shadow-2xl"
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+              className="relative w-full max-w-6xl bg-secondary border border-white/5 rounded-[40px] overflow-hidden shadow-2xl"
             >
               <div className="flex flex-col lg:flex-row h-full">
                 <div className="lg:w-1/2 h-64 lg:h-auto relative overflow-hidden">
-                  <motion.img 
-                    initial={{ scale: 1.2 }}
-                    animate={{ scale: 1 }}
+                  <OptimizedImage 
                     src={selectedFeature.img} 
                     alt={selectedFeature.title} 
-                    className="w-full h-full object-cover grayscale-[0.8]" 
+                    aspectRatio="h-full"
+                    className="w-full h-full" 
                   />
-                  <div className="absolute inset-0 bg-gradient-to-r from-bg-secondary via-transparent to-transparent hidden lg:block" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-secondary via-transparent to-transparent hidden lg:block" />
                 </div>
 
                 <div className="lg:w-1/2 p-16 overflow-y-auto no-scrollbar flex flex-col">

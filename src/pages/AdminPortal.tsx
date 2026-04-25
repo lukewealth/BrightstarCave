@@ -10,7 +10,9 @@ import {
   PlusIcon,
   PencilSquareIcon,
   TrashIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  BanknotesIcon,
+  DocumentChartBarIcon
 } from "@heroicons/react/24/outline";
 import { User } from "firebase/auth";
 import { 
@@ -44,7 +46,7 @@ import {
 
 export const AdminPortal = ({ user }: { user: User | null }) => {
   const [role, setRole] = useState<UserRole | null>(null);
-  const [view, setView] = useState<'dashboard' | 'inventory' | 'staff' | 'orders'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'inventory' | 'staff' | 'orders' | 'accounting'>('dashboard');
   const [orders, setOrders] = useState<any[]>([]);
   const [inventory, setInventory] = useState<any[]>([]);
   const [staff, setStaff] = useState<any[]>([]);
@@ -62,8 +64,26 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
     const totalRevenue = todaysOrders.reduce((acc, curr) => acc + (curr.total || 0), 0);
     const activeOrders = orders.filter(o => o.status !== 'served' && o.status !== 'cancelled').length;
     const lowStock = inventory.filter(i => i.stock < 10).length;
+
+    // Revenue by category
+    const revenueByCategory: Record<string, number> = {};
+    todaysOrders.forEach(order => {
+      order.items?.forEach((item: any) => {
+        // Find item in inventory to get category if not in order item
+        const invItem = inventory.find(i => i.id === item.id);
+        const category = invItem?.category || 'Uncategorized';
+        const itemRevenue = Number(item.price || 0) * Number(item.quantity || 0);
+        revenueByCategory[category] = (revenueByCategory[category] || 0) + itemRevenue;
+      });
+    });
     
-    return { totalRevenue, activeOrders, lowStock, totalOrders: todaysOrders.length };
+    return { 
+      totalRevenue: Number(totalRevenue), 
+      activeOrders: Number(activeOrders), 
+      lowStock: Number(lowStock), 
+      totalOrders: todaysOrders.length, 
+      revenueByCategory 
+    };
   }, [orders, inventory]);
 
   useEffect(() => {
@@ -76,7 +96,7 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
   useEffect(() => {
     if (!role || role === 'guest') return;
 
-    const qOrders = query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(50));
+    const qOrders = query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(100));
     const unsubOrders = onSnapshot(qOrders, (snap) => {
       setOrders(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
@@ -151,6 +171,7 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
                 { id: 'dashboard', icon: ChartBarIcon, label: 'Analytics' },
                 { id: 'orders', icon: ArrowPathIcon, label: 'Live Orders' },
                 { id: 'inventory', icon: Square2StackIcon, label: 'Inventory' },
+                { id: 'accounting', icon: BanknotesIcon, label: 'Accounting' },
                 { id: 'staff', icon: UserGroupIcon, label: 'Staff Management', adminOnly: true },
               ].filter(item => !item.adminOnly || role === 'admin').map((item) => (
                 <button 
@@ -194,7 +215,7 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
             <h3 className="text-gold text-[11px] uppercase tracking-[0.8em] font-black opacity-60">System Protocol v6.2</h3>
             <SectionTitle 
               subtitle="Management Terminal" 
-              title={view === 'dashboard' ? 'Daily Analytics' : view === 'inventory' ? 'Stock Control' : view === 'staff' ? 'Personnel' : 'Active Queue'} 
+              title={view === 'dashboard' ? 'Daily Analytics' : view === 'inventory' ? 'Stock Control' : view === 'staff' ? 'Personnel' : view === 'accounting' ? 'Revenue Records' : 'Active Queue'} 
             />
           </div>
           
@@ -252,6 +273,71 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
                   </div>
                 </div>
               </GlassCard>
+            </div>
+          </div>
+        )}
+
+        {view === 'accounting' && (
+          <div className="space-y-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8">
+              {Object.entries(stats.revenueByCategory).map(([category, revenue]) => (
+                <GlassCard key={category} className="p-8 space-y-4 border-white/5 hover:border-gold/20 transition-all">
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-silver font-black">{category}</p>
+                  <p className="text-2xl font-serif text-white font-black">₦{revenue.toLocaleString()}</p>
+                  <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-gold" 
+                      style={{ width: `${stats.totalRevenue > 0 ? ((revenue as number) / (stats.totalRevenue as number)) * 100 : 0}%` }}
+                    />
+                  </div>
+                </GlassCard>
+              ))}
+            </div>
+
+            <div className="space-y-8">
+              <div className="flex justify-between items-center">
+                <div className="space-y-1">
+                  <h4 className="text-xl font-serif uppercase tracking-widest text-gold">Financial Ledger</h4>
+                  <p className="text-[10px] text-silver font-black uppercase opacity-60">System Synchronized Records</p>
+                </div>
+                <div className="flex gap-4">
+                  <GoldButton className="py-3 px-6 text-[9px]">Export Ledger</GoldButton>
+                </div>
+              </div>
+
+              <LuxuryTable headers={['Timestamp', 'Reference', 'Staff Attribution', 'Itemization', 'Settlement']}>
+                {orders.map((order) => (
+                  <tr key={order.id} className="group hover:bg-white/[0.02] transition-colors">
+                    <td className="px-8 py-6 text-[10px] text-silver font-mono">
+                      {order.createdAt?.toDate().toLocaleString() || 'Pending...'}
+                    </td>
+                    <td className="px-8 py-6">
+                      <p className="text-sm font-bold text-white uppercase tracking-tighter">{order.id.slice(-8)}</p>
+                      <p className="text-[9px] text-gold tracking-widest font-black opacity-60">{order.table}</p>
+                    </td>
+                    <td className="px-8 py-6">
+                      <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                        <p className="text-[10px] text-white font-black uppercase tracking-widest">{order.staffAttribution?.split('@')[0] || 'GUEST-AUTO'}</p>
+                      </div>
+                      <p className="text-[8px] text-silver italic">{order.staffEmail || 'Internal Transmission'}</p>
+                    </td>
+                    <td className="px-8 py-6">
+                      <div className="max-w-[200px] space-y-1">
+                        {order.items?.map((item: any, idx: number) => (
+                          <p key={idx} className="text-[10px] text-silver truncate">
+                            <span className="text-white font-bold">{item.quantity}x</span> {item.name}
+                          </p>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-8 py-6">
+                      <p className="text-lg font-serif text-gold font-black">₦{order.total?.toLocaleString()}</p>
+                      <Badge color={order.status === 'served' ? 'emerald' : 'gold'}>{order.status}</Badge>
+                    </td>
+                  </tr>
+                ))}
+              </LuxuryTable>
             </div>
           </div>
         )}

@@ -1,58 +1,670 @@
 {
   "menu": [
     {
-      "id": "ck-01",
-      "name": "Old Fashioned",
-      "price": 18000,
-      "category": "Cocktails",
-      "type": "bar",
-      "stock": 150,
-      "description": "Bourbon, Angostura, Sugar, Orange"
+      "id": "kt-01",
+      "name": "Rice",
+      "price": 1000,
+      "category": "Kitchen Menu",
+      "type": "kitchen",
+      "stock": 100,
+      "description": "Standard portion of steamed or fried rice."
     },
     {
-      "id": "ck-02",
-      "name": "Espresso Martini",
-      "price": 20000,
+      "id": "kt-02",
+      "name": "Assorted Meat / Pepper Meat",
+      "price": 3000,
+      "category": "Kitchen Menu",
+      "type": "kitchen",
+      "stock": 50,
+      "description": "Variety of seasoned meat, choice of assorted or spicy peppered."
+    },
+    {
+      "id": "kt-03",
+      "name": "Fish / Goat Meat Peppersoup",
+      "price": 3000,
+      "category": "Kitchen Menu",
+      "type": "kitchen",
+      "stock": 30,
+      "description": "Traditional spicy peppersoup with choice of fresh fish or goat meat."
+    },
+    {
+      "id": "kt-12",
+      "name": "Yam and Egg Sauce",
+      "price": 4000,
+      "category": "Kitchen Menu",
+      "type": "kitchen",
+      "stock": 25,
+      "description": "Boiled or fried yam with delicious egg sauce."
+    },
+    {
+      "id": "kt-05",
+      "name": "Snail",
+      "price": 6000,
+      "category": "Kitchen Menu",
+      "type": "kitchen",
+      "stock": 20,
+      "description": "Well-seasoned large snails."
+    },
+    {
+      "id": "kt-06",
+      "name": "Tilapia / Turkey / Chicken and Chips",
+      "price": 6000,
+      "category": "Kitchen Menu",
+      "type": "kitchen",
+      "stock": 30,
+      "description": "Choice of Tilapia, Turkey, or Chicken served with crispy chips."
+    },
+    {
+      "id": "kt-07",
+      "name": "Prawns / Crab",
+      "price": 6000,
+      "category": "Kitchen Menu",
+      "type": "kitchen",
+      "stock": 20,
+      "description": "Deliciously prepared prawns or crab selection."
+    },
+    {
+      "id": "kt-16",
+      "name": "River Fish",
+      "price": 15000,
+      "category": "Exotic Kitchen",
+      "type": "kitchen",
+      "stock": 10,
+      "description": "Fresh river fish (Price ranges from 15,000 - 100,000 based on size)."
+    },
+    {
+      "id": "kt-13",
+      "name": "Guinea Fowl and Chips",
+      "price": 25000,
+      "category": "Kitchen Menu",
+      "type": "kitchen",
+      "stock": 10,
+      "description": "Whole guinea fowl served with chips."
+    },
+    {
+      "id": "kt-14",
+      "name": "Aligator",
+      "price": 65000,
+      "category": "Exotic Kitchen",
+      "type": "kitchen",
+      "stock": 5,
+      "description": "Exotic alligator meat preparation."
+    },
+    {
+      "id": "kt-15",
+      "name": "Grasscutter",
+      "price": 50000,
+      "category": "Exotic Kitchen",
+      "type": "kitchen",
+      "stock": 5,
+      "description": "Exotic grasscutter meat (Price ranges from 50,000 - 100,000 based on size)."
+    },
+    {
+      "id": "kt-17",
+      "name": "Crocodile",
+      "price": 150000,
+      "category": "Exotic Kitchen",
+      "type": "kitchen",
+      "stock": 3,
+      "description": "Exotic crocodile meat (Price starts from 150,000 Above)."
+    },
+    {
+      "id": "mk-01",
+      "name": "Mocktail: San Francisco",
+      "price": 5000,
+      "category": "Mocktails",
+      "type": "bar",
+      "stock": 100,
+      "description": "Peach, orange, pineapple, and grenadine."
+    },
+    {
+      "id": "mk-02",
+      "name": "Mocktail: Pina Colada",
+      "price": 5000,
+      "category": "Mocktails",
+      "type": "bar",
+      "stock": 100,
+      "description": "Pineapple, coconut puree, and cream (Non-Alcoholic)."
+    },
+    {
+      "id": "mk-03",
+      "name": "Mocktail: Olimpo",
+      "price": 5000,
+      "category": "Mocktails",
+      "type": "bar",
+      "stock": 100,
+      "description": "Pineapple, lime syrup, and passion fruit."
+    },
+    {
+      "id": "mk-04",
+      "name": "Mocktail: Kiwi Fruit",
+      "price": 5000,
+      "category": "Mocktails",
+      "type": "bar",
+      "stock": 100,
+      "description": "Banana, orange, pineapple, and kiwi."
+    },
+    {
+      "id": "mk-05",
+      "name": "Mocktail: Pink Panther",
+      "price": 5000,
+      "category": "Mocktails",
+      "type": "bar",
+      "stock": 100,
+      "description": "Banana, pineapple, cream, and grenadine."
+    },
+    {
+      "id": "mk-09",
+      "name": "Mocktail: Lady Sow",
+      "price": 5000,
+      "category": "Mocktails",
+      "type": "bar",
+      "stock": 100,
+      "description": "Pineapple, lemon, fresh mint, and ginger ale."
+    },
+    {
+      "id": "mk-06",
+      "name": "Mocktail: Mango Chango",
+      "price": 5000,
+      "category": "Mocktails",
+      "type": "bar",
+      "stock": 100,
+      "description": "Mango, pineapple, lime syrup, and grenadine."
+    },
+    {
+      "id": "mk-07",
+      "name": "Mocktail: Watermelon",
+      "price": 5000,
+      "category": "Mocktails",
+      "type": "bar",
+      "stock": 100,
+      "description": "Watermelon syrup, pineapple, orange, and lemon."
+    },
+    {
+      "id": "mk-08",
+      "name": "Mocktail: Ninja Turtles",
+      "price": 5000,
+      "category": "Mocktails",
+      "type": "bar",
+      "stock": 100,
+      "description": "Banana, pineapple, cream, and kiwi."
+    },
+    {
+      "id": "mk-10",
+      "name": "Mocktail: Porteno",
+      "price": 5000,
+      "category": "Mocktails",
+      "type": "bar",
+      "stock": 100,
+      "description": "Lime, lemon, sugar, fresh mint, and ginger ale."
+    },
+    {
+      "id": "mk-11",
+      "name": "Mocktail: Gunners Cup",
+      "price": 5000,
+      "category": "Mocktails",
+      "type": "bar",
+      "stock": 100,
+      "description": "Lime, angostura, ginger beer, and lemon peel."
+    },
+    {
+      "id": "mk-12",
+      "name": "Mocktail: Ukelele",
+      "price": 5000,
+      "category": "Mocktails",
+      "type": "bar",
+      "stock": 100,
+      "description": "Almond syrup, pineapple, orange, lemon, and grenadine."
+    },
+    {
+      "id": "ck-01",
+      "name": "Mojito",
+      "price": 8000,
       "category": "Cocktails",
       "type": "bar",
       "stock": 100,
-      "description": "Vodka, Fresh Espresso, Coffee Liqueur"
+      "description": "Cuban rum, fresh mint, lemon, sugar, and soda. Available in strawberry or passion fruit."
     },
     {
-      "id": "sp-01",
-      "name": "Truffle Fries",
-      "price": 14000,
-      "category": "Small Plates",
-      "type": "kitchen",
-      "stock": 50,
-      "description": "Parmesan, Herbs, Roasted Garlic Aioli"
+      "id": "ck-02",
+      "name": "Pina Colada",
+      "price": 8000,
+      "category": "Cocktails",
+      "type": "bar",
+      "stock": 100,
+      "description": "White rum, coconut puree, cream, and pineapple."
     },
     {
-      "id": "sp-02",
-      "name": "Spicy Calamari",
-      "price": 18000,
-      "category": "Small Plates",
-      "type": "kitchen",
-      "stock": 30,
-      "description": "Crispy Calamari, Gochujang Glaze, Lime"
+      "id": "ck-03",
+      "name": "Humuhumu",
+      "price": 8000,
+      "category": "Cocktails",
+      "type": "bar",
+      "stock": 100,
+      "description": "Gin, pineapple, lemon, almond syrup, and Peychaud's bitters."
     },
     {
-      "id": "mn-01",
-      "name": "Wagyu Slider",
-      "price": 24000,
-      "category": "Mains",
-      "type": "kitchen",
-      "stock": 40,
-      "description": "Caramelized Onion, Brioche, Secret Sauce"
+      "id": "ck-04",
+      "name": "Painkiller",
+      "price": 8000,
+      "category": "Cocktails",
+      "type": "bar",
+      "stock": 100,
+      "description": "Golden rum, coconut puree, pineapple, orange, and nutmeg aroma."
     },
     {
-      "id": "mn-02",
-      "name": "Miso Glazed Salmon",
-      "price": 32000,
-      "category": "Mains",
-      "type": "kitchen",
+      "id": "ck-05",
+      "name": "Zombie",
+      "price": 8000,
+      "category": "Cocktails",
+      "type": "bar",
+      "stock": 100,
+      "description": "White, golden, and black rum, passion fruit, pineapple, lemon, and almond syrup."
+    },
+    {
+      "id": "ck-06",
+      "name": "Tequila Sunrise",
+      "price": 8000,
+      "category": "Cocktails",
+      "type": "bar",
+      "stock": 100,
+      "description": "Tequila, orange, and grenadine."
+    },
+    {
+      "id": "ck-14",
+      "name": "Mint Julep",
+      "price": 8000,
+      "category": "Cocktails",
+      "type": "bar",
+      "stock": 100,
+      "description": "Bourbon, fresh mint, lemon, sugar, soda, and angostura."
+    },
+    {
+      "id": "ck-15",
+      "name": "Tropica Punch",
+      "price": 8000,
+      "category": "Cocktails",
+      "type": "bar",
+      "stock": 100,
+      "description": "Golden rum, orange, lemon, grenadine, and angostura."
+    },
+    {
+      "id": "ck-16",
+      "name": "Bloody Mary",
+      "price": 8000,
+      "category": "Cocktails",
+      "type": "bar",
+      "stock": 100,
+      "description": "Vodka, tomato, lemon, Worcestershire, Tabasco, and spices."
+    },
+    {
+      "id": "ck-07",
+      "name": "Sex On The Beach",
+      "price": 8000,
+      "category": "Cocktails",
+      "type": "bar",
+      "stock": 100,
+      "description": "Peach liqueur, vodka, orange, and cranberry."
+    },
+    {
+      "id": "ck-17",
+      "name": "Russian Melon",
+      "price": 8000,
+      "category": "Cocktails",
+      "type": "bar",
+      "stock": 100,
+      "description": "Melon liqueur, vodka, orange, and pineapple."
+    },
+    {
+      "id": "ck-18",
+      "name": "Bosque Aranes",
+      "price": 8000,
+      "category": "Cocktails",
+      "type": "bar",
+      "stock": 100,
+      "description": "Cranberry syrup, lemon-scented rum, orange, and pineapple."
+    },
+    {
+      "id": "hw-01",
+      "name": "Hennessy X.O. (Bottle)",
+      "price": 450000,
+      "category": "Brandy & Cognac",
+      "type": "bar",
+      "stock": 10,
+      "description": "Premium Cognac Bottle."
+    },
+    {
+      "id": "hw-02",
+      "name": "Hennessy VSOP (Bottle)",
+      "price": 200000,
+      "category": "Brandy & Cognac",
+      "type": "bar",
+      "stock": 15,
+      "description": "Hennessy Very Superior Old Pale Bottle."
+    },
+    {
+      "id": "hw-03",
+      "name": "Hennessy VSOP (Shot)",
+      "price": 10000,
+      "category": "Brandy & Cognac",
+      "type": "bar",
+      "stock": 100,
+      "description": "Hennessy Very Superior Old Pale Shot."
+    },
+    {
+      "id": "hw-04",
+      "name": "Hennessy VS (Bottle)",
+      "price": 80500,
+      "category": "Brandy & Cognac",
+      "type": "bar",
+      "stock": 20,
+      "description": "Hennessy Very Special Bottle."
+    },
+    {
+      "id": "hw-05",
+      "name": "Hennessy VS (Shot)",
+      "price": 5000,
+      "category": "Brandy & Cognac",
+      "type": "bar",
+      "stock": 150,
+      "description": "Hennessy Very Special Shot."
+    },
+    {
+      "id": "hw-06",
+      "name": "Remy Martins X.O. (Bottle)",
+      "price": 160000,
+      "category": "Brandy & Cognac",
+      "type": "bar",
+      "stock": 10,
+      "description": "Remy Martin Extra Old Bottle."
+    },
+    {
+      "id": "hw-07",
+      "name": "Remy Martins VSOP (Bottle)",
+      "price": 130000,
+      "category": "Brandy & Cognac",
+      "type": "bar",
+      "stock": 15,
+      "description": "Remy Martin Very Superior Old Pale Bottle."
+    },
+    {
+      "id": "hw-08",
+      "name": "Remy Martins VSOP (Shot)",
+      "price": 4500,
+      "category": "Brandy & Cognac",
+      "type": "bar",
+      "stock": 100,
+      "description": "Remy Martin Very Superior Old Pale Shot."
+    },
+    {
+      "id": "ws-01",
+      "name": "Glenfiddich 18Yrs (Bottle)",
+      "price": 170000,
+      "category": "Whiskey",
+      "type": "bar",
+      "stock": 10,
+      "description": "Single Malt Scotch Whiskey Bottle."
+    },
+    {
+      "id": "ws-02",
+      "name": "Glenfiddich 18Yrs (Shot)",
+      "price": 8000,
+      "category": "Whiskey",
+      "type": "bar",
+      "stock": 100,
+      "description": "Single Malt Scotch Whiskey Shot."
+    },
+    {
+      "id": "ws-03",
+      "name": "Chivas Regal 12Yrs (Bottle)",
+      "price": 70000,
+      "category": "Whiskey",
+      "type": "bar",
+      "stock": 20,
+      "description": "Blended Scotch Whiskey Bottle."
+    },
+    {
+      "id": "ws-04",
+      "name": "Chivas Regal 12Yrs (Shot)",
+      "price": 2500,
+      "category": "Whiskey",
+      "type": "bar",
+      "stock": 150,
+      "description": "Blended Scotch Whiskey Shot."
+    },
+    {
+      "id": "ws-05",
+      "name": "Black Label (Bottle)",
+      "price": 62000,
+      "category": "Whiskey",
+      "type": "bar",
+      "stock": 20,
+      "description": "Johnnie Walker Black Label Bottle."
+    },
+    {
+      "id": "ws-06",
+      "name": "Black Label (Shot)",
+      "price": 3000,
+      "category": "Whiskey",
+      "type": "bar",
+      "stock": 150,
+      "description": "Johnnie Walker Black Label Shot."
+    },
+    {
+      "id": "ws-07",
+      "name": "Jack Daniels (Bottle)",
+      "price": 40000,
+      "category": "Whiskey",
+      "type": "bar",
       "stock": 25,
-      "description": "Wild Salmon, Bok Choy, Sesame Ginger Sauce"
+      "description": "Tennessee Whiskey Bottle."
+    },
+    {
+      "id": "ws-08",
+      "name": "Jack Daniels (Shot)",
+      "price": 2500,
+      "category": "Whiskey",
+      "type": "bar",
+      "stock": 150,
+      "description": "Tennessee Whiskey Shot."
+    },
+    {
+      "id": "ws-09",
+      "name": "Jameson (Bottle)",
+      "price": 40500,
+      "category": "Whiskey",
+      "type": "bar",
+      "stock": 25,
+      "description": "Irish Whiskey Bottle."
+    },
+    {
+      "id": "ws-10",
+      "name": "Jameson (Shot)",
+      "price": 2000,
+      "category": "Whiskey",
+      "type": "bar",
+      "stock": 150,
+      "description": "Irish Whiskey Shot."
+    },
+    {
+      "id": "tq-01",
+      "name": "Don Julio 1942 (Bottle)",
+      "price": 650000,
+      "category": "Tequila",
+      "type": "bar",
+      "stock": 5,
+      "description": "Añejo Tequila Bottle."
+    },
+    {
+      "id": "tq-02",
+      "name": "Clase Azul Reposado (Bottle)",
+      "price": 561000,
+      "category": "Tequila",
+      "type": "bar",
+      "stock": 5,
+      "description": "Premium Reposado Tequila Bottle."
+    },
+    {
+      "id": "tq-03",
+      "name": "Casamigos (Bottle)",
+      "price": 65000,
+      "category": "Tequila",
+      "type": "bar",
+      "stock": 15,
+      "description": "Casamigos Tequila Bottle."
+    },
+    {
+      "id": "tq-04",
+      "name": "Casamigos (Shot)",
+      "price": 4000,
+      "category": "Tequila",
+      "type": "bar",
+      "stock": 100,
+      "description": "Casamigos Tequila Shot."
+    },
+    {
+      "id": "tq-05",
+      "name": "Olmeca Gold (Bottle)",
+      "price": 60000,
+      "category": "Tequila",
+      "type": "bar",
+      "stock": 20,
+      "description": "Olmeca Gold Tequila Bottle."
+    },
+    {
+      "id": "tq-06",
+      "name": "Olmeca Gold (Shot)",
+      "price": 3000,
+      "category": "Tequila",
+      "type": "bar",
+      "stock": 150,
+      "description": "Olmeca Gold Tequila Shot."
+    },
+    {
+      "id": "wn-01",
+      "name": "Fragolino Red Wine (Bottle)",
+      "price": 25500,
+      "category": "Wine",
+      "type": "bar",
+      "stock": 20,
+      "description": "Sparkling Red Wine Bottle."
+    },
+    {
+      "id": "wn-02",
+      "name": "Fragolino Red Wine (Glass)",
+      "price": 5000,
+      "category": "Wine",
+      "type": "bar",
+      "stock": 100,
+      "description": "Sparkling Red Wine Glass."
+    },
+    {
+      "id": "wn-03",
+      "name": "Declan Red (Bottle)",
+      "price": 20500,
+      "category": "Wine",
+      "type": "bar",
+      "stock": 20,
+      "description": "Declan Red Wine Bottle."
+    },
+    {
+      "id": "wn-04",
+      "name": "Declan Red (Glass)",
+      "price": 5000,
+      "category": "Wine",
+      "type": "bar",
+      "stock": 100,
+      "description": "Declan Red Wine Glass."
+    },
+    {
+      "id": "wn-05",
+      "name": "Four Cousins (Bottle)",
+      "price": 25500,
+      "category": "Wine",
+      "type": "bar",
+      "stock": 20,
+      "description": "Four Cousins Wine Bottle."
+    },
+    {
+      "id": "wn-06",
+      "name": "Four Cousins (Glass)",
+      "price": 4500,
+      "category": "Wine",
+      "type": "bar",
+      "stock": 100,
+      "description": "Four Cousins Wine Glass."
+    },
+    {
+      "id": "dr-01",
+      "name": "Heineken",
+      "price": 2000,
+      "category": "Beer",
+      "type": "bar",
+      "stock": 200,
+      "description": "Heineken Lager Beer."
+    },
+    {
+      "id": "dr-02",
+      "name": "Budweiser / Desperado",
+      "price": 1500,
+      "category": "Beer",
+      "type": "bar",
+      "stock": 150,
+      "description": "Premium Beer Selection."
+    },
+    {
+      "id": "dr-03",
+      "name": "Star / Gulder / Goldberg",
+      "price": 1500,
+      "category": "Beer",
+      "type": "bar",
+      "stock": 150,
+      "description": "Local Lager Beer Selection."
+    },
+    {
+      "id": "dr-04",
+      "name": "Big Stout",
+      "price": 2500,
+      "category": "Beer",
+      "type": "bar",
+      "stock": 100,
+      "description": "Large bottle of Stout."
+    },
+    {
+      "id": "dr-05",
+      "name": "Red Bull / Monster",
+      "price": 2000,
+      "category": "Soft Drinks",
+      "type": "bar",
+      "stock": 100,
+      "description": "Energy Drink Selection."
+    },
+    {
+      "id": "dr-06",
+      "name": "Pet Coke / Fayrouz",
+      "price": 1000,
+      "category": "Soft Drinks",
+      "type": "bar",
+      "stock": 200,
+      "description": "Soda and Soft Drink Selection."
+    },
+    {
+      "id": "dr-07",
+      "name": "Five Alive / Hollandia",
+      "price": 3000,
+      "category": "Soft Drinks",
+      "type": "bar",
+      "stock": 100,
+      "description": "Juice and Yogurt Drink Selection."
+    },
+    {
+      "id": "dr-08",
+      "name": "Big Water",
+      "price": 1500,
+      "category": "Soft Drinks",
+      "type": "bar",
+      "stock": 300,
+      "description": "Large bottle of premium water."
     },
     {
       "id": "ap-01",
@@ -62,7 +674,7 @@
       "type": "hotel",
       "stock": 2,
       "description": "Fully furnished, 24/7 Power/Internet, PS5 Gaming. ₦150,000 per night.",
-      "image": "/images/WhatsApp Image 2026-04-21 at 19.35.32 (10).jpeg"
+      "image": "/images/IMG_1775 2.HEIC"
     },
     {
       "id": "ap-02",
@@ -72,7 +684,7 @@
       "type": "hotel",
       "stock": 5,
       "description": "Premium features, compact luxury. ₦50,000 per night.",
-      "image": "/images/WhatsApp Image 2026-04-21 at 19.35.32 (2).jpeg"
+      "image": "/images/IMG_1752.HEIC"
     },
     {
       "id": "ap-03",
@@ -81,8 +693,7 @@
       "category": "Apartments",
       "type": "hotel",
       "stock": 8,
-      "description": "Ideal for short stays. ₦35,000 per night.",
-      "image": "/images/WhatsApp Image 2026-04-21 at 19.35.32 (9).jpeg"
+      "description": "Ideal for short stays. ₦35,000 per night."
     },
     {
       "id": "pl-01",
@@ -92,7 +703,7 @@
       "type": "hotel",
       "stock": 20,
       "description": "All-day access to our temperature-controlled infinity pool.",
-      "image": "/images/IMG_0093 2.PNG"
+      "image": "/images/IMG_1752.HEIC"
     },
     {
       "id": "pl-02",
@@ -102,7 +713,7 @@
       "type": "hotel",
       "stock": 30,
       "description": "Peaceful outdoor relaxation area.",
-      "image": "/images/WhatsApp Image 2026-04-21 at 19.35.31 (1).jpeg"
+      "image": "/images/IMG_1832.HEIC"
     },
     {
       "id": "sn-01",
@@ -112,7 +723,7 @@
       "type": "bar",
       "stock": 4,
       "description": "One hour of play on our championship-grade mahogany tables.",
-      "image": "/images/WhatsApp Image 2026-04-21 at 19.35.32 (7).jpeg"
+      "image": "/images/snooker.jpg"
     }
   ]
 }

@@ -1,6 +1,42 @@
 import { motion, AnimatePresence } from "motion/react";
-import { ReactNode, useEffect, useState } from "react";
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import { ReactNode, useEffect, useState, useRef, Key } from "react";
+import { XMarkIcon, PhotoIcon } from "@heroicons/react/24/outline";
+import heic2any from "heic2any";
+
+// Persistent Cache for Image Conversions (IndexedDB)
+const CACHE_DB = "BrightstarImageCache";
+const STORE_NAME = "converted_images";
+
+const getCache = async (key: string): Promise<string | null> => {
+  return new Promise((resolve) => {
+    const request = indexedDB.open(CACHE_DB, 1);
+    request.onupgradeneeded = () => request.result.createObjectStore(STORE_NAME);
+    request.onsuccess = () => {
+      const db = request.result;
+      const transaction = db.transaction(STORE_NAME, "readonly");
+      const store = transaction.objectStore(STORE_NAME);
+      const getReq = store.get(key);
+      getReq.onsuccess = () => {
+        if (getReq.result) {
+          resolve(URL.createObjectURL(getReq.result));
+        } else {
+          resolve(null);
+        }
+      };
+      getReq.onerror = () => resolve(null);
+    };
+    request.onerror = () => resolve(null);
+  });
+};
+
+const setCache = async (key: string, blob: Blob) => {
+  const request = indexedDB.open(CACHE_DB, 1);
+  request.onsuccess = () => {
+    const db = request.result;
+    const transaction = db.transaction(STORE_NAME, "readwrite");
+    transaction.objectStore(STORE_NAME).put(blob, key);
+  };
+};
 
 interface PrimitiveProps {
   children: ReactNode;
@@ -8,7 +44,120 @@ interface PrimitiveProps {
   onClick?: () => void;
   disabled?: boolean;
   type?: "button" | "submit" | "reset";
+  key?: Key;
 }
+
+export const OptimizedImage = ({ 
+  src, 
+  alt, 
+  className = "", 
+  aspectRatio = "aspect-square",
+  artistic = true,
+  priority = false 
+}: { 
+  src: string; 
+  alt: string; 
+  className?: string; 
+  aspectRatio?: string;
+  artistic?: boolean;
+  priority?: boolean;
+}) => {
+  const [displaySrc, setDisplaySrc] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    const loadImg = async () => {
+      if (!src) return;
+      
+      const isHeic = src.toLowerCase().endsWith(".heic");
+      
+      try {
+        if (isHeic) {
+          // Check Persistent Cache first
+          const cachedUrl = await getCache(src);
+          if (cachedUrl && isMounted.current) {
+            setDisplaySrc(cachedUrl);
+            return;
+          }
+
+          const response = await fetch(src, { cache: "force-cache" });
+          const blob = await response.blob();
+          const convertedBlob = await heic2any({
+            blob,
+            toType: "image/jpeg",
+            quality: 0.7 // Balanced quality/speed
+          });
+          
+          const finalBlob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+          await setCache(src, finalBlob);
+          
+          const url = URL.createObjectURL(finalBlob);
+          if (isMounted.current) setDisplaySrc(url);
+        } else {
+          if (isMounted.current) setDisplaySrc(src);
+        }
+      } catch (err) {
+        console.error("Image load error:", err);
+        if (isMounted.current) setError(true);
+      }
+    };
+
+    loadImg();
+
+    return () => {
+      isMounted.current = false;
+      if (displaySrc && displaySrc.startsWith("blob:")) {
+        // We don't always want to revoke if it's cached, 
+        // but for safety in memory management:
+        // URL.revokeObjectURL(displaySrc);
+      }
+    };
+  }, [src]);
+
+  return (
+    <div className={`relative overflow-hidden ${aspectRatio} ${className} ${artistic ? 'rounded-[32px] border border-white/5 bg-white/[0.02]' : ''}`}>
+      <AnimatePresence>
+        {isLoading && !error && (
+          <motion.div 
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-10 flex items-center justify-center bg-black/20 backdrop-blur-sm"
+          >
+            <div className="w-10 h-10 border-2 border-gold/10 border-t-gold rounded-full animate-spin" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {error ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-silver/20 space-y-2 bg-white/[0.02]">
+          <PhotoIcon className="w-10 h-10" />
+          <span className="text-[9px] uppercase tracking-widest font-black">Link Broken</span>
+        </div>
+      ) : (
+        displaySrc && (
+          <motion.img
+            initial={{ opacity: 0, scale: 1.02 }}
+            animate={{ opacity: isLoading ? 0 : 1, scale: isLoading ? 1.02 : 1 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            src={displaySrc}
+            alt={alt}
+            onLoad={() => setIsLoading(false)}
+            loading={priority ? "eager" : "lazy"}
+            fetchPriority={priority ? "high" : "auto"}
+            className={`w-full h-full object-cover ${artistic ? 'grayscale-[0.2] hover:grayscale-0 transition-all duration-700' : ''}`}
+          />
+        )
+      )}
+      
+      {artistic && !isLoading && !error && (
+        <div className="absolute inset-0 pointer-events-none border border-white/5 rounded-[32px] shadow-inner-glass" />
+      )}
+    </div>
+  );
+};
 
 export const GlassCard = ({ children, className = "", onClick }: PrimitiveProps) => (
   <motion.div 
@@ -48,13 +197,17 @@ export const EmeraldButton = ({ children, className = "", onClick, disabled, typ
 
 export const SilverInput = ({ placeholder, value, onChange, type = "text", className = "", icon: Icon }: any) => (
   <div className={`relative group ${className}`}>
-    {Icon && <Icon className="absolute left-5 top-1/2 -translate-y-1/2 text-silver/40 group-focus-within:text-gold transition-colors" size={18} />}
+    {Icon && (
+      <div className="absolute left-5 top-1/2 -translate-y-1/2 text-silver/40 group-focus-within:text-gold transition-colors pointer-events-none">
+        <Icon className="w-4 h-4" />
+      </div>
+    )}
     <input
       type={type}
       placeholder={placeholder}
       value={value}
       onChange={onChange}
-      className={`w-full bg-white/5 border border-white/10 rounded-2xl py-4 ${Icon ? 'pl-14' : 'px-6'} pr-6 text-sm text-white placeholder:text-silver/20 focus:outline-none focus:border-gold/30 transition-all`}
+      className={`w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 ${Icon ? 'pl-12' : 'px-6'} pr-6 text-sm text-white placeholder:text-silver/20 focus:outline-none focus:border-gold/30 transition-all`}
     />
   </div>
 );

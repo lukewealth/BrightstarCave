@@ -1,6 +1,7 @@
 import { Clock, MapPin, Phone, ShieldCheck, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useEffect } from "react";
+import { OptimizedImage } from "../components/design-system/Primitive";
 
 const aboutImages = [
   "/images/WhatsApp Image 2026-04-21 at 19.35.32 (11).jpeg",
@@ -60,10 +61,12 @@ export const AboutUsPage = () => {
             transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
             className="absolute inset-0"
           >
-            <img 
+            <OptimizedImage 
               src={aboutImages[currentImage]} 
-              className="w-full h-full object-cover" 
               alt="Atmosphere"
+              aspectRatio="h-full"
+              artistic={false}
+              className="w-full h-full"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
           </motion.div>
@@ -113,10 +116,11 @@ export const AboutUsPage = () => {
           </div>
         </div>
         <div className="relative aspect-[4/5] rounded-[40px] overflow-hidden border border-white/[0.05] glass-card p-2 group">
-          <img 
+          <OptimizedImage 
             src="/images/WhatsApp Image 2026-04-21 at 19.35.32 (10).jpeg" 
-            className="w-full h-full object-cover rounded-[32px] opacity-60 group-hover:opacity-100 transition-opacity duration-1000" 
             alt="Atmosphere"
+            aspectRatio="h-full"
+            className="w-full h-full opacity-60 group-hover:opacity-100 transition-opacity duration-1000"
           />
           <div className="absolute inset-0 bg-emerald/5 opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>

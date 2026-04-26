@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth, getUserRole, UserRole } from "./lib/firebase";
 
@@ -12,6 +12,43 @@ import { AdminPortal } from "./pages/AdminPortal";
 import { StaffPortal } from "./pages/StaffPortal";
 import { motion, AnimatePresence } from "motion/react";
 import { Star } from "lucide-react";
+
+const AuthGuard = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles: UserRole[] }) => {
+  const [role, setRole] = useState<UserRole | null>(null);
+  const [loading, setLoading] = useState(true);
+  const user = auth.currentUser;
+
+  useEffect(() => {
+    if (user) {
+      getUserRole(user.uid).then((r) => {
+        setRole(r);
+        setLoading(false);
+      });
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
+
+  if (loading) return null;
+  if (!user) return <Navigate to="/" />;
+  if (role && !allowedRoles.includes(role)) return <Navigate to="/" />;
+
+  return <>{children}</>;
+};
+
+const RoleRedirector = ({ user, role }: { user: User | null, role: UserRole }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (user && location.pathname === '/') {
+      if (role === 'admin') navigate('/admin');
+      else if (role.startsWith('staff')) navigate('/staff');
+    }
+  }, [user, role, navigate, location]);
+
+  return null;
+};
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -28,7 +65,7 @@ export default function App() {
       } else {
         setRole('guest');
       }
-      setTimeout(() => setLoading(false), 1000); // Slight delay for transition
+      setTimeout(() => setLoading(false), 1000);
     });
     return () => unsubscribe();
   }, []);
@@ -42,6 +79,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <RoleRedirector user={user} role={role} />
       <AnimatePresence mode="wait">
         {loading ? (
           <motion.div 
@@ -73,12 +111,6 @@ export default function App() {
               >
                 <Star className="text-accent fill-accent/20" size={40} />
               </motion.div>
-              
-              <motion.div 
-                animate={{ rotate: -360 }}
-                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                className="absolute inset-2 border border-accent/5 rounded-full border-dashed"
-              />
             </div>
             
             <div className="mt-12 overflow-hidden">
@@ -107,10 +139,14 @@ export default function App() {
           <Route path="/about" element={<AboutUsPage />} />
           <Route path="/orders" element={<OrderingPage user={user} />} />
           <Route path="/admin" element={
-            role === 'admin' ? <AdminPortal user={user} /> : <Navigate to="/" />
+            <AuthGuard allowedRoles={['admin']}>
+              <AdminPortal user={user} />
+            </AuthGuard>
           } />
           <Route path="/staff" element={
-            role !== 'guest' ? <StaffPortal user={user} /> : <Navigate to="/" />
+            <AuthGuard allowedRoles={['admin', 'staff', 'staff_bar', 'staff_waiter']}>
+              <StaffPortal user={user} />
+            </AuthGuard>
           } />
         </Routes>
       </Layout>

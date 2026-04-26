@@ -43,7 +43,14 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
   const [aiInsights, setAiInsights] = useState<string>("");
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error', visible: boolean }>({ message: '', type: 'success', visible: false });
 
-  // Stats calculation - Personalized for Staff
+  // Department determination based on role
+  const department = useMemo(() => {
+    if (role === 'staff_bar') return 'Bar';
+    if (role === 'staff_waiter') return 'Kitchen';
+    return 'All';
+  }, [role]);
+
+  // Stats calculation - Personalized and Departmental
   const stats = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -51,25 +58,27 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
     const todaysOrders = orders.filter(o => o.createdAt?.toDate() >= today);
     const totalRevenue = todaysOrders.reduce((acc, curr) => acc + (curr.total || 0), 0);
     const activeOrders = orders.filter(o => o.status !== 'served' && o.status !== 'cancelled').length;
-    const lowStock = inventory.filter(i => i.stock < 10).length;
+    
+    // Filter inventory based on department
+    const relevantInventory = department === 'All' ? inventory : inventory.filter(i => i.category === department);
+    const lowStock = relevantInventory.filter(i => i.stock < 10).length;
 
     return { totalRevenue, activeOrders, lowStock, totalOrders: todaysOrders.length };
-  }, [orders, inventory]);
+  }, [orders, inventory, department]);
 
-  // Gemini AI Personalized Staff Insights
   useEffect(() => {
     if (stats.totalOrders > 0) {
       const insights = [
-        "Your average service time is 12% faster today. Excellent pace.",
-        "High demand for 'Cocktails' detected. Prepare glassware for evening rush.",
-        "You've handled 30% of today's total revenue. Top performer alert.",
-        "Gemini Suggestion: Recommend 'Signature Cave Platter' to guests at Table 4."
+        `Your ${department} service pace is optimal.`,
+        `High demand for ${department} items detected.`,
+        "Revenue transmission velocity: 1.4x",
+        `Gemini suggests: Prepare for the ${department} rush.`
       ];
       setAiInsights(insights[Math.floor(Math.random() * insights.length)]);
     } else {
-      setAiInsights("Ready for synchronization. Establish guest transmissions to begin.");
+      setAiInsights("Ready for synchronization. Establish transmissions.");
     }
-  }, [stats]);
+  }, [stats, department]);
 
   useEffect(() => {
     if (user) {
@@ -80,6 +89,7 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
   useEffect(() => {
     if (!role || role === 'guest') return;
 
+    // Load personal orders
     const qOrders = query(
       collection(db, "orders"), 
       where("staffId", "==", user?.uid),
@@ -113,20 +123,17 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
             .item { display: flex; justify-content: space-between; margin-bottom: 5px; }
             .total { margin-top: 10px; border-top: 1px solid #000; padding-top: 5px; font-weight: bold; display: flex; justify-content: space-between; font-size: 14px; }
             .footer { text-align: center; margin-top: 20px; font-size: 10px; border-top: 1px dashed #000; padding-top: 10px; }
-            .staff { font-size: 10px; margin-bottom: 5px; }
           </style>
         </head>
         <body>
           <div class="header">
             <div class="logo">BRIGHT STAR CAVE</div>
-            <div>Staff Assisted Terminal</div>
-            <div>Ogunfayo, Lagos</div>
+            <div>Dept: ${department}</div>
           </div>
           <div class="staff">
             Ref: ${order.id.slice(-8)}<br>
             Date: ${order.formattedDate}<br>
-            Staff: ${order.staffName}<br>
-            Dept: ${role?.replace('_', ' ').toUpperCase()}
+            Staff: ${order.staffName}
           </div>
           <div class="items">
             ${order.items.map((i: any) => `
@@ -141,8 +148,7 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
             <span>₦${order.total.toLocaleString()}</span>
           </div>
           <div class="footer">
-            Payment: Bank Transfer<br>
-            Moniepoint: 5007071458<br>
+            Bank: Moniepoint 5007071458<br>
             * Brightstar Encryption v4.0 *
           </div>
           <script>window.print(); setTimeout(() => window.close(), 500);</script>
@@ -154,19 +160,24 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
   };
 
   const navItems = [
-    { id: 'dashboard', icon: ChartBarIcon, label: 'Personal Analytics' },
-    { id: 'orders', icon: ArrowPathIcon, label: 'My Queue' },
-    { id: 'inventory', icon: Square2StackIcon, label: 'Stock Registry' },
-    { id: 'accounting', icon: BanknotesIcon, label: 'Personal Finance' },
+    { id: 'dashboard', icon: ChartBarIcon, label: 'Analytics' },
+    { id: 'orders', icon: ArrowPathIcon, label: 'Queue' },
+    { id: 'inventory', icon: Square2StackIcon, label: 'Resources' },
+    { id: 'accounting', icon: BanknotesIcon, label: 'Sales' },
   ];
+
+  const filteredInventory = useMemo(() => {
+    if (department === 'All') return inventory;
+    return inventory.filter(i => i.category === department);
+  }, [inventory, department]);
 
   if (!role || role === 'guest') {
     return (
-      <div className="h-full flex items-center justify-center bg-primary p-6 lg:p-20">
-        <GlassCard className="p-8 lg:p-20 text-center space-y-6 lg:space-y-8 max-w-lg">
-          <ExclamationTriangleIcon className="w-12 h-12 lg:w-20 lg:h-20 text-gold mx-auto animate-pulse" />
-          <h2 className="text-2xl lg:text-4xl font-serif text-white uppercase tracking-widest">Access Restricted</h2>
-          <p className="text-silver text-xs lg:text-sm leading-relaxed opacity-60">System protocols require staff clearance. Department allocation missing.</p>
+      <div className="h-full flex items-center justify-center bg-primary p-6 lg:p-20 text-center">
+        <GlassCard className="p-12 space-y-6 max-w-lg">
+          <ExclamationTriangleIcon className="w-16 h-16 text-gold mx-auto animate-pulse" />
+          <h2 className="text-3xl font-serif text-white uppercase">Access Restricted</h2>
+          <p className="text-silver opacity-60">Authorized personnel only.</p>
         </GlassCard>
       </div>
     );
@@ -175,19 +186,19 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
   return (
     <div className="flex flex-col lg:flex-row h-full bg-primary font-sans text-white overflow-hidden">
       {/* Sidebar */}
-      <aside className={`fixed lg:relative inset-y-0 left-0 w-72 lg:w-80 border-r border-white/[0.03] bg-black/95 lg:bg-black/40 p-8 lg:p-10 flex flex-col justify-between backdrop-blur-3xl z-[100] transition-transform duration-500 lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="space-y-12 lg:space-y-16">
-          <div className="px-2 lg:px-4">
+      <aside className={`fixed lg:relative inset-y-0 left-0 w-72 lg:w-80 border-r border-white/[0.03] bg-black/40 p-8 lg:p-10 flex flex-col justify-between backdrop-blur-3xl z-[100] transition-transform duration-500 lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="space-y-12">
+          <div className="px-2">
             <div className="flex justify-between items-center mb-10">
-              <p className="text-[9px] lg:text-[10px] uppercase tracking-[0.4em] lg:tracking-[0.6em] text-gold font-black opacity-60">Personal Hub</p>
+              <p className="text-[9px] uppercase tracking-[0.4em] text-gold font-black opacity-60">{department} HUB</p>
               <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-1 text-silver/40"><XMarkIcon className="w-5 h-5" /></button>
             </div>
-            <nav className="space-y-2 lg:space-y-3">
+            <nav className="space-y-2">
               {navItems.map((item) => (
                 <button 
                   key={item.id}
                   onClick={() => { setView(item.id as any); setIsSidebarOpen(false); }}
-                  className={`w-full flex items-center gap-4 lg:gap-5 text-[10px] lg:text-[11px] p-4 lg:p-5 rounded-2xl transition-all uppercase tracking-[0.2em] font-black ${view === item.id ? 'bg-gold text-black shadow-2xl shadow-gold/20' : 'text-silver hover:bg-white/5 hover:text-gold'}`}
+                  className={`w-full flex items-center gap-4 text-[10px] p-4 rounded-2xl transition-all uppercase tracking-[0.2em] font-black ${view === item.id ? 'bg-gold text-black' : 'text-silver hover:bg-white/5'}`}
                 >
                   <item.icon className="w-5 h-5" />
                   <span>{item.label}</span>
@@ -195,67 +206,41 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
               ))}
             </nav>
           </div>
-
-          <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] bg-gradient-to-br from-emerald/10 to-transparent border border-emerald/20">
-            <div className="flex items-center gap-3 mb-3 lg:mb-4 text-emerald">
-              <SparklesIcon className="w-4 h-4 lg:w-5 lg:h-5 animate-pulse" />
-              <span className="text-[8px] lg:text-[10px] font-black uppercase tracking-widest">Gemini AI</span>
-            </div>
-            <p className="text-[10px] lg:text-[11px] text-silver leading-relaxed font-bold italic opacity-80">
-              {aiInsights}
-            </p>
-          </div>
-        </div>
-        
-        <div className="p-4 lg:p-6 border-t border-white/5 flex items-center gap-4">
-          <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-xl bg-gold/20 flex items-center justify-center text-gold font-bold text-sm lg:text-base">
-            {user?.email?.[0].toUpperCase()}
-          </div>
-          <div className="overflow-hidden">
-            <p className="text-[9px] lg:text-[10px] font-black text-white truncate">{user?.email}</p>
-            <p className="text-[7px] lg:text-[8px] uppercase tracking-widest text-gold font-bold">{role?.replace('_', ' ')}</p>
+          <div className="p-6 rounded-[24px] bg-gradient-to-br from-emerald/10 to-transparent border border-emerald/20">
+            <p className="text-[10px] text-silver leading-relaxed font-bold italic opacity-80">{aiInsights}</p>
           </div>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-6 lg:p-12 xl:p-20 space-y-10 lg:space-y-16 no-scrollbar">
-        <header className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-8 pb-8 lg:pb-12 border-b border-white/5">
-          <div className="space-y-3 lg:space-y-4">
-            <h3 className="text-gold text-[9px] lg:text-[11px] uppercase tracking-[0.6em] lg:tracking-[0.8em] font-black opacity-60">Staff Terminal v4.1</h3>
-            <h2 className="text-3xl lg:text-4xl xl:text-5xl font-serif text-white tracking-tighter uppercase">{view}</h2>
+      <main className="flex-1 overflow-y-auto p-6 lg:p-12 xl:p-20 space-y-10 no-scrollbar">
+        <header className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-8 pb-8 border-b border-white/5">
+          <div className="space-y-3">
+            <h3 className="text-gold text-[9px] uppercase tracking-[0.6em] font-black opacity-60">{department} TERMINAL</h3>
+            <h2 className="text-4xl font-serif text-white tracking-tighter uppercase">{view}</h2>
           </div>
-          <div className="flex gap-6 lg:gap-8 w-full xl:w-auto">
-            <div className="flex-1 xl:text-right">
-              <p className="text-[8px] lg:text-[9px] uppercase tracking-widest text-silver mb-1 opacity-60">Daily Personal Sales</p>
-              <p className="text-2xl lg:text-3xl font-serif text-gold font-black">₦{stats.totalRevenue.toLocaleString()}</p>
+          <div className="flex gap-6">
+            <div className="xl:text-right">
+              <p className="text-[8px] uppercase tracking-widest text-silver mb-1 opacity-60">Personal Sales</p>
+              <p className="text-2xl font-serif text-gold font-black">₦{stats.totalRevenue.toLocaleString()}</p>
             </div>
-            <div className="flex-1 xl:text-right border-l border-white/10 pl-6 lg:pl-8">
-              <p className="text-[8px] lg:text-[9px] uppercase tracking-widest text-silver mb-1 opacity-60">Transmissions</p>
-              <p className="text-2xl lg:text-3xl font-serif text-white font-black">{stats.totalOrders}</p>
+            <div className="xl:text-right border-l border-white/10 pl-6">
+              <p className="text-[8px] uppercase tracking-widest text-silver mb-1 opacity-60">Stock Alerts</p>
+              <p className="text-2xl font-serif text-white font-black">{stats.lowStock}</p>
             </div>
           </div>
         </header>
 
-        {view === 'accounting' && (
-          <div className="space-y-6 lg:space-y-8">
-            <LuxuryTable headers={['Time', 'Ref', 'Items', 'Amount', 'Action']}>
-              {orders.map((order) => (
-                <tr key={order.id} className="group hover:bg-white/[0.02] transition-colors border-b border-white/[0.02]">
-                  <td className="px-6 lg:px-8 py-5 text-[9px] lg:text-[10px] text-silver font-mono">{order.formattedTime}</td>
-                  <td className="px-6 lg:px-8 py-5">
-                    <p className="text-xs lg:text-sm font-bold text-white uppercase tracking-tighter">{order.id.slice(-8)}</p>
+        {view === 'inventory' && (
+          <div className="space-y-10">
+            <LuxuryTable headers={['Resource', 'Available', 'Status']}>
+              {filteredInventory.map((item) => (
+                <tr key={item.id} className="group hover:bg-white/[0.02] border-b border-white/[0.02]">
+                  <td className="px-6 py-5">
+                    <p className="text-sm font-bold text-white">{item.name}</p>
                   </td>
-                  <td className="px-6 lg:px-8 py-5">
-                    <p className="text-[9px] lg:text-[10px] text-silver">{order.items?.length || 0} units</p>
-                  </td>
-                  <td className="px-6 lg:px-8 py-5">
-                    <p className="text-base lg:text-lg font-serif text-gold font-black">₦{order.total?.toLocaleString()}</p>
-                  </td>
-                  <td className="px-6 lg:px-8 py-5">
-                    <button onClick={() => handlePrintReceipt(order)} className="p-2 bg-emerald/10 text-emerald hover:bg-emerald hover:text-black rounded-lg transition-all">
-                      <PrinterIcon className="w-4 h-4" />
-                    </button>
+                  <td className="px-6 py-5 font-mono text-gold">{item.stock} units</td>
+                  <td className="px-6 py-5">
+                    <Badge color={item.stock < 10 ? 'red' : 'emerald'}>{item.stock < 10 ? 'Low' : 'OK'}</Badge>
                   </td>
                 </tr>
               ))}
@@ -263,9 +248,21 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
           </div>
         )}
 
-        {/* Existing Inventory/Dashboard optimized for staff view */}
+        {view === 'accounting' && (
+          <LuxuryTable headers={['Time', 'Ref', 'Amount', 'Action']}>
+            {orders.map((order) => (
+              <tr key={order.id} className="group hover:bg-white/[0.02] border-b border-white/[0.02]">
+                <td className="px-6 py-5 text-[9px] text-silver">{order.formattedTime}</td>
+                <td className="px-6 py-5 text-xs text-white">{order.id.slice(-8)}</td>
+                <td className="px-6 py-5 font-serif text-gold">₦{order.total?.toLocaleString()}</td>
+                <td className="px-6 py-5">
+                  <button onClick={() => handlePrintReceipt(order)} className="p-2 text-emerald hover:text-white transition-colors"><PrinterIcon className="w-5 h-5" /></button>
+                </td>
+              </tr>
+            ))}
+          </LuxuryTable>
+        )}
       </main>
-
       <Toast message={toast.message} type={toast.type} isVisible={toast.visible} onClose={() => setToast({ ...toast, visible: false })} />
     </div>
   );

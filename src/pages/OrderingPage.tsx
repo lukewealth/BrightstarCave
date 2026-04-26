@@ -52,6 +52,7 @@ interface CartItem extends MenuItem {
 export const OrderingPage = ({ user }: { user: User | null }) => {
   const [role, setRole] = useState<UserRole | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -64,7 +65,16 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
   const [timeLeft, setTimeLeft] = useState<number>(60);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error', visible: boolean }>({ message: '', type: 'success', visible: false });
 
-  const categories = useMemo(() => ["All", ...Array.from(new Set(menuItems.map(i => i.category)))], []);
+  // Fetch Dynamic Menu
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "menu"), (snap) => {
+      const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as MenuItem[];
+      setMenuItems(items);
+    });
+    return () => unsub();
+  }, []);
+
+  const categories = useMemo(() => ["All", ...Array.from(new Set(menuItems.map(i => i.category)))], [menuItems]);
 
   useEffect(() => {
     if (user) {

@@ -39,6 +39,7 @@ import {
   TabSystem, 
   Toast 
 } from "../components/design-system/Primitive";
+import { trackAddToCart, trackPurchase, trackEvent, Events } from "../lib/analytics";
 
 interface CartItem extends MenuItem {
   quantity: number;
@@ -97,6 +98,7 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
     });
     if (!isCartOpen) setIsCartOpen(true);
     showToast(`${item.name} added to selection`);
+    trackAddToCart(item);
   };
 
   const updateQuantity = (id: string, delta: number) => {
@@ -136,7 +138,7 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
         staffEmail: staffEmail || null
       };
 
-      await addDoc(collection(db, "orders"), orderData);
+      const docRef = await addDoc(collection(db, "orders"), orderData);
 
       for (const item of cart) {
         const itemRef = doc(db, "inventory", item.id);
@@ -146,6 +148,8 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
         }).catch(() => console.log("Inventory tracking skipped for this item"));
       }
 
+      trackPurchase(docRef.id, totalAmount, cart);
+      
       setCart([]);
       setShowCheckout(false);
       setIsCartOpen(false);
@@ -155,6 +159,15 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const openCheckout = () => {
+    setShowCheckout(true);
+    trackEvent(Events.BEGIN_CHECKOUT, {
+      value: totalAmount,
+      currency: 'NGN',
+      items: cart.map(i => ({ item_id: i.id, item_name: i.name, quantity: i.quantity }))
+    });
   };
 
   return (

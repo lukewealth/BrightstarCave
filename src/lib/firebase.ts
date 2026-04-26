@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
+import { getAnalytics, isSupported } from 'firebase/analytics';
 import { 
   getFirestore, 
   doc, 
@@ -28,9 +29,12 @@ if (!firebaseConfig.apiKey) {
   console.error("Firebase API Key is missing. Check your .env file.");
 }
 
-const app = initializeApp(firebaseConfig);
+export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+export const db = getFirestore(app, (import.meta as any).env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || '(default)');
+
+// Initialize Analytics conditionally
+export const analytics = isSupported().then(yes => yes ? getAnalytics(app) : null);
 
 export const googleProvider = new GoogleAuthProvider();
 

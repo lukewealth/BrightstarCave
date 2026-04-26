@@ -66,33 +66,34 @@ export const seedDatabaseFromJSON = async (jsonData: any) => {
     const batch = writeBatch(db);
     const menuItems = jsonData.menu || [];
     
+    // Clear existing menu for total restoration
+    const currentMenu = await getDocs(collection(db, "menu"));
+    currentMenu.forEach(d => batch.delete(d.ref));
+
     for (const item of menuItems) {
-      // Seed Menu Collection
+      // Restore Menu Definition
       const menuRef = doc(db, "menu", item.id);
       batch.set(menuRef, {
         ...item,
         updatedAt: serverTimestamp()
-      }, { merge: true });
+      });
 
-      // Seed Inventory Collection
+      // Synchronize Inventory Baseline
       const invRef = doc(db, "inventory", item.id);
-      const invSnap = await getDoc(invRef);
-      if (!invSnap.exists()) {
-        batch.set(invRef, {
-          id: item.id,
-          name: item.name,
-          category: item.category,
-          stock: item.stock || 0,
-          soldCount: 0,
-          lastRestocked: serverTimestamp()
-        });
-      }
+      batch.set(invRef, {
+        id: item.id,
+        name: item.name,
+        category: item.category,
+        stock: item.stock || 0,
+        soldCount: 0,
+        lastRestocked: serverTimestamp()
+      });
     }
     
     await batch.commit();
-    console.log("Database successfully populated from JSON archive.");
+    console.log("System Resources Restored Successfully.");
   } catch (err) {
-    console.error("Seeding failed:", err);
+    console.error("Master Restoration Failed:", err);
   }
 };
 

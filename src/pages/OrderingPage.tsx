@@ -266,6 +266,15 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
     showToast(`${item.name} selected`);
   };
 
+  const filteredItems = useMemo(() => {
+    return displayMenu.filter(item => {
+      const matchesCategory = activeTab === "All" || item.category === activeTab;
+      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                           item.description.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesCategory && matchesSearch;
+    });
+  }, [displayMenu, activeTab, searchQuery]);
+
   return (
     <div className="flex h-full bg-primary text-white overflow-hidden relative font-sans">
       <main className="flex-1 overflow-y-auto p-6 lg:p-12 space-y-8 no-scrollbar">
@@ -285,7 +294,7 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
-          {displayMenu.filter(i => activeTab === "All" || i.category === activeTab).map((item) => (
+          {filteredItems.map((item) => (
             <GlassCard key={item.id} className="p-6 h-full flex flex-col justify-between border-white/[0.03] hover:border-gold/20 transition-all">
               <div className="space-y-4">
                 <div className="flex justify-between items-start">

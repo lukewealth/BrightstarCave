@@ -17,7 +17,7 @@ import {
 import { User, signOut } from "firebase/auth";
 import { auth, UserRole } from "../lib/firebase";
 import { LoginPopup } from "./LoginPopup";
-import { Badge, OptimizedImage } from "./design-system/Primitive";
+import { Badge, OptimizedImage, Toast, GoldButton } from "./design-system/Primitive";
 
 export const Layout = ({ 
   children, 
@@ -33,14 +33,24 @@ export const Layout = ({
   toggleTheme: () => void
 }) => {
   const location = useLocation();
-  const isAdminView = location.pathname.startsWith("/admin");
+  const isAdminView = location.pathname.startsWith("/admin") || location.pathname.startsWith("/staff");
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error', visible: boolean }>({ message: '', type: 'success', visible: false });
 
   // Close mobile menu on route change
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      setToast({ message: "Termination successful. Access revoked.", type: 'success', visible: true });
+    } catch (err) {
+      setToast({ message: "Termination failed.", type: 'error', visible: true });
+    }
+  };
 
   const navVariants = {
     hidden: { opacity: 0, y: -20 },
@@ -61,8 +71,10 @@ export const Layout = ({
     { to: "/orders", label: "Menu" },
   ];
 
-  if (role !== 'guest') {
-    navItems.push({ to: "/admin", label: role === 'admin' ? "Admin" : "Staff" });
+  if (role === 'admin') {
+    navItems.push({ to: "/admin", label: "Admin" });
+  } else if (role === 'staff') {
+    navItems.push({ to: "/staff", label: "Staff" });
   }
 
   return (
@@ -135,9 +147,9 @@ export const Layout = ({
                 <div className="text-right hidden sm:block">
                   <div className="flex items-center gap-2 mb-0.5">
                     <p className="text-[10px] font-black text-white uppercase tracking-wider">{user.displayName || user.email?.split('@')[0]}</p>
-                    <Badge color={role === 'admin' ? 'gold' : role.startsWith('staff') ? 'emerald' : 'silver'}>{role.replace('_', ' ')}</Badge>
+                    <Badge color={role === 'admin' ? 'gold' : role === 'staff' ? 'emerald' : 'silver'}>{role.replace('_', ' ')}</Badge>
                   </div>
-                  <button onClick={() => signOut(auth)} className="text-[9px] text-gold/60 hover:text-gold uppercase tracking-widest font-bold transition-colors flex items-center gap-1 ml-auto">
+                  <button onClick={handleSignOut} className="text-[9px] text-gold/60 hover:text-gold uppercase tracking-widest font-bold transition-colors flex items-center gap-1 ml-auto">
                     Exit <ArrowLeftOnRectangleIcon className="w-3 h-3" />
                   </button>
                 </div>
@@ -245,7 +257,7 @@ export const Layout = ({
                         <p className="text-[8px] text-gold uppercase font-bold tracking-widest mt-0.5">{role}</p>
                       </div>
                     </div>
-                    <button onClick={() => signOut(auth)} className="text-red-400">
+                    <button onClick={handleSignOut} className="text-red-400">
                       <ArrowLeftOnRectangleIcon className="w-5 h-5" />
                     </button>
                   </div>
@@ -277,13 +289,20 @@ export const Layout = ({
           </AnimatePresence>
         </main>
         
-        {!isAdminView && <Footer />}
+        {!isAdminView && <Footer role={role} />}
       </div>
+
+      <Toast 
+        message={toast.message} 
+        type={toast.type} 
+        isVisible={toast.visible} 
+        onClose={() => setToast({ ...toast, visible: false })} 
+      />
     </div>
   );
 };
 
-const Footer = () => {
+const Footer = ({ role }: { role: UserRole }) => {
   return (
     <footer className="bg-secondary border-t border-white/[0.03] pt-20 lg:pt-32 pb-12 lg:pb-16 px-6 lg:px-12">
       <div className="max-w-7xl mx-auto">
@@ -372,7 +391,11 @@ const Footer = () => {
           <div className="flex flex-wrap justify-center gap-8 lg:gap-12 text-[8px] lg:text-[9px] text-secondary uppercase tracking-[0.4em] lg:tracking-[0.5em] font-black">
             <button className="hover:text-gold transition-colors">Privacy</button>
             <button className="hover:text-gold transition-colors">Terms</button>
-            <Link to="/admin" className="text-gold hover:brightness-125 transition-all">Staff Terminal</Link>
+            {role === 'admin' ? (
+              <Link to="/admin" className="text-gold hover:brightness-125 transition-all">Admin Terminal</Link>
+            ) : role === 'staff' ? (
+              <Link to="/staff" className="text-gold hover:brightness-125 transition-all">Staff Terminal</Link>
+            ) : null}
           </div>
         </div>
       </div>

@@ -10,7 +10,8 @@ import {
   TableCellsIcon,
   MagnifyingGlassIcon,
   ArrowRightIcon,
-  XMarkIcon
+  XMarkIcon,
+  PrinterIcon
 } from "@heroicons/react/24/outline";
 import { User } from "firebase/auth";
 import { 
@@ -56,6 +57,7 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
   const [tableId, setTableId] = useState("");
   const [staffEmail, setStaffEmail] = useState("");
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
+  const [lastOrder, setLastOrder] = useState<any>(null);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error', visible: boolean }>({ message: '', type: 'success', visible: false });
 
   const categories = useMemo(() => ["All", ...Array.from(new Set(menuItems.map(i => i.category)))], []);
@@ -117,6 +119,63 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
 
   const totalAmount = useMemo(() => cart.reduce((s, i) => s + (i.price * i.quantity), 0), [cart]);
 
+  const handlePrintReceipt = (order: any) => {
+    const printWindow = window.open('', '_blank', 'width=300,height=600');
+    if (!printWindow) return;
+
+    const receiptHtml = `
+      <html>
+        <head>
+          <style>
+            @page { size: 80mm auto; margin: 0; }
+            body { font-family: 'Courier New', Courier, monospace; width: 70mm; margin: 0 auto; padding: 10px; font-size: 12px; line-height: 1.2; }
+            .header { text-align: center; margin-bottom: 10px; border-bottom: 1px dashed #000; padding-bottom: 10px; }
+            .logo { font-size: 16px; font-weight: bold; }
+            .item { display: flex; justify-content: space-between; margin-bottom: 5px; }
+            .total { margin-top: 10px; border-top: 1px solid #000; padding-top: 5px; font-weight: bold; display: flex; justify-content: space-between; font-size: 14px; }
+            .footer { text-align: center; margin-top: 20px; font-size: 10px; border-top: 1px dashed #000; padding-top: 10px; }
+            .staff { font-size: 10px; margin-bottom: 5px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="logo">BRIGHT STAR CAVE</div>
+            <div>Luxury Gastronomy</div>
+            <div>Ogunfayo, Lagos</div>
+            <div>Tel: 09168858844</div>
+          </div>
+          <div class="staff">
+            Date: ${order.formattedDate}<br>
+            Time: ${order.formattedTime}<br>
+            Table/Room: ${order.table}<br>
+            Staff: ${order.staffName || 'Guest'}
+          </div>
+          <div class="items">
+            ${order.items.map((i: any) => `
+              <div class="item">
+                <span>${i.name} x${i.quantity}</span>
+                <span>₦${(i.price * i.quantity).toLocaleString()}</span>
+              </div>
+            `).join('')}
+          </div>
+          <div class="total">
+            <span>TOTAL</span>
+            <span>₦${order.total.toLocaleString()}</span>
+          </div>
+          <div class="footer">
+            Payment Method: Bank Transfer<br>
+            Moniepoint: 5007071458<br>
+            Thank you for your visit!<br>
+            * Brightstar Encryption v4.0 *
+          </div>
+          <script>window.print(); setTimeout(() => window.close(), 500);</script>
+        </body>
+      </html>
+    `;
+    printWindow.document.write(receiptHtml);
+    printWindow.document.close();
+  };
+
   const handleCheckout = async () => {
     if (!tableId) {
       showToast("Please provide Table/Room ID", "error");
@@ -124,6 +183,8 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
     }
 
     setIsSubmitting(true);
+    const now = new Date();
+    
     try {
       const orderData = {
         table: tableId,
@@ -134,8 +195,14 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
         userName: user?.displayName || user?.email || "Guest",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        staffAttribution: role !== 'guest' ? user?.email : null,
-        staffEmail: staffEmail || null
+        formattedDate: now.toLocaleDateString(),
+        formattedTime: now.toLocaleTimeString(),
+        // Staff Assisted logic
+        isStaffAssisted: role !== 'guest' && role !== null,
+        staffId: role !== 'guest' ? user?.uid : null,
+        staffName: role !== 'guest' ? (user?.displayName || user?.email?.split('@')[0]) : null,
+        staffEmail: role !== 'guest' ? user?.email : (staffEmail || null),
+        attributionNote: role !== 'guest' ? `Assisted by ${user?.email}` : (staffEmail ? `External Assisted: ${staffEmail}` : 'Direct Guest Order')
       };
 
       const docRef = await addDoc(collection(db, "orders"), orderData);
@@ -150,10 +217,18 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
 
       trackPurchase(docRef.id, totalAmount, cart);
       
+      const completeOrder = { ...orderData, id: docRef.id };
+      setLastOrder(completeOrder);
+      
       setCart([]);
       setShowCheckout(false);
       setIsCartOpen(false);
-      showToast("Order synchronized with terminal");
+      showToast(`Order Synchronized at ${now.toLocaleTimeString()}`);
+      
+      // Auto-print receipt for staff
+      if (role !== 'guest' && role !== null) {
+        handlePrintReceipt(completeOrder);
+      }
     } catch (err) {
       showToast("Checkout failed", "error");
     } finally {
@@ -397,8 +472,15 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
                         <p className="text-[9px] lg:text-[10px] text-emerald font-bold mt-1 uppercase tracking-widest leading-none">{order.status}</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="w-1 h-1 rounded-full bg-emerald animate-pulse" />
-                        <span className="text-[8px] lg:text-[9px] font-black text-emerald uppercase tracking-widest">Live</span>
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => handlePrintReceipt(order)}
+                          className="p-2 text-emerald hover:text-white transition-colors"
+                        >
+                          <PrinterIcon className="w-4 h-4" />
+                        </motion.button>
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald animate-pulse" />
                       </div>
                     </div>
                   ))}
@@ -427,7 +509,7 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
                   onChange={(e: any) => setTableId(e.target.value)}
                 />
               </div>
-              {role !== 'guest' && (
+              {(role !== 'guest' && role !== null) && (
                 <div className="space-y-3 lg:space-y-4">
                   <label className="text-[9px] lg:text-[10px] uppercase tracking-widest text-gold font-black leading-none">Staff Attribution</label>
                   <SilverInput 
@@ -445,11 +527,11 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
                 <CreditCardIcon className="w-5 h-5 lg:w-6 lg:h-6" />
                 <h4 className="text-[11px] lg:text-sm font-black uppercase tracking-widest">Direct Settlement</h4>
               </div>
-              <p className="text-[10px] text-silver leading-relaxed font-light">
-                Complete settlement to:
-                <br /><span className="text-white font-bold tracking-widest">Zenith Bank | 1234567890</span>
-                <br />Brightstar Cave Ltd
-              </p>
+              <div className="space-y-2">
+                <p className="text-[9px] uppercase tracking-widest text-silver font-black">Moniepoint Bank</p>
+                <p className="text-xl font-mono font-bold text-white tracking-widest">5007071458</p>
+                <p className="text-[10px] text-gold font-bold uppercase tracking-wider">BRIGHT STAR Cave</p>
+              </div>
               <div className="pt-4 lg:pt-6 border-t border-white/5">
                 <div className="flex justify-between text-[10px] font-black uppercase text-silver leading-none">
                   <span>Grand Total</span>

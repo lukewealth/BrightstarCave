@@ -29,41 +29,59 @@ if (!firebaseConfig.apiKey) {
   console.error("Firebase API Key is missing. Check your .env file.");
 }
 
+const rawDbId = (import.meta as any).env.VITE_FIREBASE_FIRESTORE_DATABASE_ID;
+// Force (default) if the ID is missing or belongs to the old project
+const dbId = (!rawDbId || rawDbId.includes('ai-studio-3544ee')) ? '(default)' : rawDbId;
+
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app, (import.meta as any).env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || '(default)');
+export const db = getFirestore(app, dbId);
 
 // Initialize Analytics conditionally
 export const analytics = isSupported().then(yes => yes ? getAnalytics(app) : null);
 
 export const googleProvider = new GoogleAuthProvider();
 
-export type UserRole = 'admin' | 'staff_kitchen' | 'staff_bar' | 'staff_waiter' | 'guest';
+export type UserRole = 'admin' | 'staff_bar' | 'staff_waiter' | 'staff' | 'guest';
 
 export const getUserRole = async (uid: string, email?: string | null): Promise<UserRole> => {
   const env = (import.meta as any).env;
   const targetEmail = email || auth.currentUser?.email;
   
   if (!uid && !targetEmail) return 'guest';
-  if (targetEmail === env.VITE_ADMIN_EMAIL) return 'admin';
-  if (targetEmail === env.VITE_STAFF_EMAIL) return 'staff_waiter';
+  
+  // Super Admin Check
+  if (targetEmail === 'contact@tricodepro' || targetEmail === env.VITE_ADMIN_EMAIL) return 'admin';
 
   try {
-    // Check admins collection for assigned roles
     const adminDoc = await getDoc(doc(db, "admins", uid));
-    if (adminDoc.exists()) return adminDoc.data().role as UserRole;
+    if (adminDoc.exists()) {
+      return adminDoc.data().role as UserRole;
+    }
     
-    // Check by email if UID fails
     if (targetEmail) {
       const q = query(collection(db, "admins"), where("email", "==", targetEmail), limit(1));
       const qSnap = await getDocs(q);
-      if (!qSnap.empty) return qSnap.docs[0].data().role as UserRole;
+      if (!qSnap.empty) {
+        return qSnap.docs[0].data().role as UserRole;
+      }
     }
   } catch (error) {
     console.error("Error fetching user role:", error);
   }
 
   return 'guest';
+};
+
+// Menu Management Utilities
+export const updateMenuItem = async (id: string, data: any) => {
+  const menuRef = doc(db, "menu", id);
+  await setDoc(menuRef, { ...data, updatedAt: serverTimestamp() }, { merge: true });
+};
+
+export const createMenuItem = async (data: any) => {
+  const menuRef = doc(collection(db, "menu"));
+  await setDoc(menuRef, { ...data, id: menuRef.id, createdAt: serverTimestamp() });
 };
 
 // Inventory Seeding Utility

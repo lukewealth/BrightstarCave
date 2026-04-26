@@ -9,6 +9,7 @@ import { LandingPage } from "./pages/LandingPage";
 import { AboutUsPage } from "./pages/AboutUsPage";
 import { OrderingPage } from "./pages/OrderingPage";
 import { AdminPortal } from "./pages/AdminPortal";
+import { StaffPortal } from "./pages/StaffPortal";
 import { motion, AnimatePresence } from "motion/react";
 import { Star } from "lucide-react";
 
@@ -106,7 +107,10 @@ export default function App() {
           <Route path="/about" element={<AboutUsPage />} />
           <Route path="/orders" element={<OrderingPage user={user} />} />
           <Route path="/admin" element={
-            role !== 'guest' ? <AdminPortal user={user} /> : <Navigate to="/" />
+            role === 'admin' ? <AdminPortal user={user} /> : <Navigate to="/" />
+          } />
+          <Route path="/staff" element={
+            role !== 'guest' ? <StaffPortal user={user} /> : <Navigate to="/" />
           } />
         </Routes>
       </Layout>

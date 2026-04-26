@@ -5,13 +5,10 @@ import {
   ChevronRightIcon, 
   CreditCardIcon, 
   ClockIcon, 
-  CheckCircleIcon,
   UserIcon,
   TableCellsIcon,
   MagnifyingGlassIcon,
-  ArrowRightIcon,
   XMarkIcon,
-  PrinterIcon,
   NoSymbolIcon,
   BanknotesIcon
 } from "@heroicons/react/24/outline";
@@ -31,7 +28,7 @@ import {
   getDoc
 } from "firebase/firestore";
 import { db, getUserRole, UserRole, getStaffList } from "../lib/firebase";
-import { menuItems, MenuItem } from "../data/menu";
+import { MenuItem } from "../data/menu";
 import { 
   GlassCard, 
   GoldButton, 
@@ -52,7 +49,7 @@ interface CartItem extends MenuItem {
 export const OrderingPage = ({ user }: { user: User | null }) => {
   const [role, setRole] = useState<UserRole | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [displayMenu, setDisplayMenu] = useState<MenuItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -61,7 +58,6 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
   const [tableId, setTableId] = useState("");
   const [staffList, setStaffList] = useState<any[]>([]);
   const [selectedStaff, setSelectedStaff] = useState<any>(null);
-  const [activeOrders, setActiveOrders] = useState<any[]>([]);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(60);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error', visible: boolean }>({ message: '', type: 'success', visible: false });
@@ -70,7 +66,7 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
   useEffect(() => {
     const unsubMenu = onSnapshot(collection(db, "menu"), (snap) => {
       const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as MenuItem[];
-      setMenuItems(items);
+      setDisplayMenu(items);
     });
 
     getStaffList().then(setStaffList);
@@ -78,24 +74,11 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
     return () => unsubMenu();
   }, []);
 
-  const categories = useMemo(() => ["All", ...Array.from(new Set(menuItems.map(i => i.category)))], [menuItems]);
+  const categories = useMemo(() => ["All", ...Array.from(new Set(displayMenu.map(i => i.category)))], [displayMenu]);
 
   useEffect(() => {
     if (user) {
       getUserRole(user.uid, user.email).then(setRole);
-      
-      const q = query(
-        collection(db, "orders"),
-        where("userId", "==", user.uid),
-        orderBy("createdAt", "desc"),
-        limit(5)
-      );
-      
-      const unsub = onSnapshot(q, (snap) => {
-        setActiveOrders(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      });
-      
-      return () => unsub();
     }
   }, [user]);
 
@@ -302,7 +285,7 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
-          {menuItems.filter(i => activeTab === "All" || i.category === activeTab).map((item) => (
+          {displayMenu.filter(i => activeTab === "All" || i.category === activeTab).map((item) => (
             <GlassCard key={item.id} className="p-6 h-full flex flex-col justify-between border-white/[0.03] hover:border-gold/20 transition-all">
               <div className="space-y-4">
                 <div className="flex justify-between items-start">

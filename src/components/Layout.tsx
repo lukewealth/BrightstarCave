@@ -71,11 +71,8 @@ export const Layout = ({
     { to: "/orders", label: "Menu" },
   ];
 
-  if (role === 'admin') {
-    navItems.push({ to: "/admin", label: "Admin" });
-  } else if (role === 'staff') {
-    navItems.push({ to: "/staff", label: "Staff" });
-  }
+  const adminItem = role === 'admin' ? { to: "/admin", label: "Admin Terminal" } : null;
+  const staffItem = (role === 'staff' || role === 'staff_bar' || role === 'staff_waiter') ? { to: "/staff", label: "Staff Terminal" } : null;
 
   return (
     <div className="min-h-screen flex flex-col bg-primary text-primary font-sans selection:bg-gold/30">
@@ -105,7 +102,7 @@ export const Layout = ({
         </div>
         
         {/* Desktop Nav */}
-        <nav className="hidden lg:flex items-center gap-12">
+        <nav className="hidden lg:flex items-center gap-10">
           {navItems.map((nav, i) => (
             <motion.div 
               key={nav.to} 
@@ -116,12 +113,12 @@ export const Layout = ({
             >
               <Link 
                 to={nav.to} 
-                className={`text-[11px] font-black tracking-[0.4em] uppercase transition-all duration-300 relative group py-2
+                className={`text-[10px] font-black tracking-[0.3em] uppercase transition-all duration-300 relative group py-2
                   ${location.pathname === nav.to ? "text-gold" : "text-silver/60 hover:text-gold"}`}
               >
                 <span className="relative z-10">{nav.label}</span>
                 <motion.span 
-                  className="absolute bottom-0 left-0 w-full h-[2px] bg-gold origin-left"
+                  className="absolute bottom-0 left-0 w-full h-[1px] bg-gold origin-left"
                   initial={{ scaleX: 0 }}
                   animate={{ scaleX: location.pathname === nav.to ? 1 : 0 }}
                   whileHover={{ scaleX: 1 }}
@@ -130,6 +127,21 @@ export const Layout = ({
               </Link>
             </motion.div>
           ))}
+          
+          {(adminItem || staffItem) && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-4 w-px bg-white/10 mx-2" />
+          )}
+
+          {adminItem && (
+            <Link to={adminItem.to} className={`text-[10px] font-black tracking-[0.3em] uppercase transition-all ${location.pathname === adminItem.to ? "text-gold" : "text-gold/40 hover:text-gold"}`}>
+              {adminItem.label}
+            </Link>
+          )}
+          {staffItem && (
+            <Link to={staffItem.to} className={`text-[10px] font-black tracking-[0.3em] uppercase transition-all ${location.pathname === staffItem.to ? "text-emerald" : "text-emerald/40 hover:text-emerald"}`}>
+              {staffItem.label}
+            </Link>
+          )}
         </nav>
 
         <div className="flex items-center gap-4 lg:gap-8">

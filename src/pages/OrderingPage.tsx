@@ -11,7 +11,9 @@ import {
   MagnifyingGlassIcon,
   ArrowRightIcon,
   XMarkIcon,
-  PrinterIcon
+  PrinterIcon,
+  NoSymbolIcon,
+  BanknotesIcon
 } from "@heroicons/react/24/outline";
 import { User } from "firebase/auth";
 import { 
@@ -25,7 +27,8 @@ import {
   limit,
   doc,
   updateDoc,
-  increment
+  increment,
+  getDoc
 } from "firebase/firestore";
 import { db, getUserRole, UserRole } from "../lib/firebase";
 import { menuItems, MenuItem } from "../data/menu";
@@ -57,7 +60,8 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
   const [tableId, setTableId] = useState("");
   const [staffEmail, setStaffEmail] = useState("");
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
-  const [lastOrder, setLastOrder] = useState<any>(null);
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
+  const [timeLeft, setTimeLeft] = useState<number>(60);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error', visible: boolean }>({ message: '', type: 'success', visible: false });
 
   const categories = useMemo(() => ["All", ...Array.from(new Set(menuItems.map(i => i.category)))], []);
@@ -81,37 +85,18 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
     }
   }, [user]);
 
-  const filteredItems = useMemo(() => {
-    return menuItems.filter(item => {
-      const matchesCategory = activeTab === "All" || item.category === activeTab;
-      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                           item.description.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesCategory && matchesSearch;
-    });
-  }, [activeTab, searchQuery]);
-
-  const addToCart = (item: MenuItem) => {
-    setCart(prev => {
-      const existing = prev.find(i => i.id === item.id);
-      if (existing) {
-        return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
-      }
-      return [...prev, { ...item, quantity: 1 }];
-    });
-    if (!isCartOpen && window.innerWidth >= 1024) setIsCartOpen(true);
-    showToast(`${item.name} added to selection`);
-    trackAddToCart(item);
-  };
-
-  const updateQuantity = (id: string, delta: number) => {
-    setCart(prev => prev.map(i => {
-      if (i.id === id) {
-        const newQty = Math.max(0, i.quantity + delta);
-        return { ...i, quantity: newQty };
-      }
-      return i;
-    }).filter(i => i.quantity > 0));
-  };
+  // Payment Timer Logic (60s Max)
+  useEffect(() => {
+    let interval: any;
+    if (showCheckout && pendingOrderId && timeLeft > 0) {
+      interval = setInterval(() => {
+        setTimeLeft((prev) => prev - 1);
+      }, 1000);
+    } else if (timeLeft === 0 && pendingOrderId) {
+      handleCancelOrder("Payment Window Expired - Order Discarded");
+    }
+    return () => clearInterval(interval);
+  }, [showCheckout, pendingOrderId, timeLeft]);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type, visible: true });
@@ -134,20 +119,17 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
             .item { display: flex; justify-content: space-between; margin-bottom: 5px; }
             .total { margin-top: 10px; border-top: 1px solid #000; padding-top: 5px; font-weight: bold; display: flex; justify-content: space-between; font-size: 14px; }
             .footer { text-align: center; margin-top: 20px; font-size: 10px; border-top: 1px dashed #000; padding-top: 10px; }
-            .staff { font-size: 10px; margin-bottom: 5px; }
           </style>
         </head>
         <body>
           <div class="header">
             <div class="logo">BRIGHT STAR CAVE</div>
             <div>Luxury Gastronomy</div>
-            <div>Ogunfayo, Lagos</div>
-            <div>Tel: 09168858844</div>
           </div>
           <div class="staff">
             Date: ${order.formattedDate}<br>
             Time: ${order.formattedTime}<br>
-            Table/Room: ${order.table}<br>
+            Table: ${order.table}<br>
             Staff: ${order.staffName || 'Guest'}
           </div>
           <div class="items">
@@ -159,11 +141,10 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
             `).join('')}
           </div>
           <div class="total">
-            <span>TOTAL</span>
+            <span>PAID</span>
             <span>₦${order.total.toLocaleString()}</span>
           </div>
           <div class="footer">
-            Payment Method: Bank Transfer<br>
             Moniepoint: 5007071458<br>
             Thank you for your visit!<br>
             * Brightstar Encryption v4.0 *
@@ -176,12 +157,12 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
     printWindow.document.close();
   };
 
-  const handleCheckout = async () => {
+  const handleInitiateOrder = async () => {
     if (!tableId) {
       showToast("Please provide Table/Room ID", "error");
       return;
     }
-
+    
     setIsSubmitting(true);
     const now = new Date();
     
@@ -190,373 +171,229 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
         table: tableId,
         items: cart.map(i => ({ id: i.id, name: i.name, quantity: i.quantity, price: i.price })),
         total: totalAmount,
-        status: "new",
+        status: "pending-payment",
         userId: user?.uid || "guest",
         userName: user?.displayName || user?.email || "Guest",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         formattedDate: now.toLocaleDateString(),
         formattedTime: now.toLocaleTimeString(),
-        // Staff Assisted logic
         isStaffAssisted: role !== 'guest' && role !== null,
         staffId: role !== 'guest' ? user?.uid : null,
         staffName: role !== 'guest' ? (user?.displayName || user?.email?.split('@')[0]) : null,
         staffEmail: role !== 'guest' ? user?.email : (staffEmail || null),
-        attributionNote: role !== 'guest' ? `Assisted by ${user?.email}` : (staffEmail ? `External Assisted: ${staffEmail}` : 'Direct Guest Order')
       };
 
       const docRef = await addDoc(collection(db, "orders"), orderData);
-
-      for (const item of cart) {
-        const itemRef = doc(db, "inventory", item.id);
-        await updateDoc(itemRef, {
-          stock: increment(-item.quantity),
-          soldCount: increment(item.quantity)
-        }).catch(() => console.log("Inventory tracking skipped for this item"));
-      }
-
-      trackPurchase(docRef.id, totalAmount, cart);
-      
-      const completeOrder = { ...orderData, id: docRef.id };
-      setLastOrder(completeOrder);
-      
-      setCart([]);
-      setShowCheckout(false);
-      setIsCartOpen(false);
-      showToast(`Order Synchronized at ${now.toLocaleTimeString()}`);
-      
-      // Auto-print receipt for staff
-      if (role !== 'guest' && role !== null) {
-        handlePrintReceipt(completeOrder);
-      }
+      setPendingOrderId(docRef.id);
+      setTimeLeft(60);
+      setShowCheckout(true);
     } catch (err) {
-      showToast("Checkout failed", "error");
+      showToast("Failed to initiate protocol", "error");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const openCheckout = () => {
-    setShowCheckout(true);
-    trackEvent(Events.BEGIN_CHECKOUT, {
-      value: totalAmount,
-      currency: 'NGN',
-      items: cart.map(i => ({ item_id: i.id, item_name: i.name, quantity: i.quantity }))
+  const handleConfirmPayment = async () => {
+    if (!pendingOrderId) return;
+    
+    setIsSubmitting(true);
+    try {
+      const orderRef = doc(db, "orders", pendingOrderId);
+      await updateDoc(orderRef, {
+        status: "paid",
+        updatedAt: serverTimestamp(),
+        paymentConfirmedAt: serverTimestamp()
+      });
+
+      // Deplete Inventory
+      for (const item of cart) {
+        const itemRef = doc(db, "inventory", item.id);
+        await updateDoc(itemRef, {
+          stock: increment(-item.quantity),
+          soldCount: increment(item.quantity)
+        }).catch(() => {});
+      }
+
+      const snap = await getDoc(orderRef);
+      handlePrintReceipt({ id: pendingOrderId, ...snap.data() });
+
+      trackPurchase(pendingOrderId, totalAmount, cart);
+      
+      setCart([]);
+      setPendingOrderId(null);
+      setShowCheckout(false);
+      setIsCartOpen(false);
+      showToast("Transmission Successful. Receipt Generated.");
+    } catch (err) {
+      showToast("Confirmation failed", "error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancelOrder = async (reason = "Discarded by User") => {
+    if (!pendingOrderId) return;
+    
+    try {
+      await updateDoc(doc(db, "orders", pendingOrderId), {
+        status: "cancelled",
+        cancelReason: reason,
+        updatedAt: serverTimestamp()
+      });
+      setPendingOrderId(null);
+      setShowCheckout(false);
+      showToast(reason, "error");
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const addToCart = (item: MenuItem) => {
+    setCart(prev => {
+      const existing = prev.find(i => i.id === item.id);
+      if (existing) {
+        return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
+      }
+      return [...prev, { ...item, quantity: 1 }];
     });
+    if (!isCartOpen && window.innerWidth >= 1024) setIsCartOpen(true);
+    showToast(`${item.name} selected`);
   };
 
   return (
     <div className="flex h-full bg-primary text-white overflow-hidden relative font-sans">
-      {/* Main Selection Area */}
-      <main className="flex-1 overflow-y-auto p-6 lg:p-12 space-y-8 lg:space-y-12 no-scrollbar">
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 lg:gap-8">
-          <div className="space-y-3 lg:space-y-4">
-            <h3 className="text-gold text-[8px] lg:text-[10px] uppercase tracking-[0.6em] lg:tracking-[0.8em] font-black opacity-60 leading-none">Selection Portal</h3>
-            <SectionTitle subtitle="Gastronomy & Leisure" title="The Curated Menu" />
-          </div>
-          <div className="flex flex-col gap-2 w-full md:w-80 relative group">
-            <SilverInput 
-              placeholder="Seek flavors..." 
-              icon={MagnifyingGlassIcon} 
-              value={searchQuery}
-              onChange={(e: any) => setSearchQuery(e.target.value)}
-              className="w-full"
-            />
-            <AnimatePresence>
-              {searchQuery.length > 1 && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="absolute top-full left-0 right-0 mt-2 bg-secondary/95 backdrop-blur-3xl border border-white/10 rounded-2xl overflow-hidden z-[60] shadow-2xl"
-                >
-                  {menuItems.filter(item => 
-                    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    item.category.toLowerCase().includes(searchQuery.toLowerCase())
-                  ).slice(0, 5).map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        setSearchQuery(item.name);
-                        setActiveTab("All");
-                      }}
-                      className="w-full px-5 py-4 text-left hover:bg-white/5 transition-colors flex justify-between items-center group/item"
-                    >
-                      <div>
-                        <p className="text-sm font-bold text-white group-hover/item:text-gold transition-colors">{item.name}</p>
-                        <p className="text-[9px] text-silver uppercase tracking-widest">{item.category}</p>
-                      </div>
-                      <ArrowRightIcon className="w-4 h-4 text-silver/40 group-hover/item:text-gold transition-all group-hover/item:translate-x-1" />
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+      <main className="flex-1 overflow-y-auto p-6 lg:p-12 space-y-8 no-scrollbar">
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+          <SectionTitle subtitle="Gastronomy & Leisure" title="Menu Selection" />
+          <SilverInput 
+            placeholder="Search flavor..." 
+            icon={MagnifyingGlassIcon} 
+            value={searchQuery}
+            onChange={(e: any) => setSearchQuery(e.target.value)}
+            className="w-full md:w-80"
+          />
         </header>
 
-        <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-6 px-6 lg:mx-0 lg:px-0">
-          <TabSystem 
-            tabs={categories.map(c => ({ id: c, label: c }))} 
-            activeTab={activeTab} 
-            onChange={setActiveTab} 
-          />
+        <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
+          <TabSystem tabs={categories.map(c => ({ id: c, label: c }))} activeTab={activeTab} onChange={setActiveTab} />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 lg:gap-8">
-          <AnimatePresence mode="popLayout">
-            {filteredItems.map((item) => (
-              <motion.div
-                layout
-                key={item.id}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="group"
-              >
-                <GlassCard className="p-6 lg:p-8 h-full flex flex-col justify-between border-white/[0.03] hover:border-gold/20 transition-all">
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-start">
-                      <Badge color="silver">{item.category}</Badge>
-                      <p className="font-serif text-gold text-lg lg:text-xl font-black">₦{item.price.toLocaleString()}</p>
-                    </div>
-                    <h4 className="text-xl lg:text-2xl font-serif text-white group-hover:text-gold transition-colors leading-tight">{item.name}</h4>
-                    <p className="text-xs text-silver leading-relaxed font-light opacity-60 line-clamp-2 lg:line-clamp-3">{item.description}</p>
-                  </div>
-                  <div className="mt-8 pt-6 border-t border-white/5 flex justify-between items-center">
-                    <p className="text-[10px] uppercase tracking-widest text-silver font-bold opacity-40">Stock: {item.stock}</p>
-                    <GoldButton 
-                      onClick={() => addToCart(item)}
-                      disabled={item.stock <= 0}
-                      className="py-2.5 px-6"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px]">Add</span>
-                        <ChevronRightIcon className="w-3 h-3" />
-                      </div>
-                    </GoldButton>
-                  </div>
-                </GlassCard>
-              </motion.div>
-            ))}
-          </AnimatePresence>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+          {menuItems.filter(i => activeTab === "All" || i.category === activeTab).map((item) => (
+            <GlassCard key={item.id} className="p-6 h-full flex flex-col justify-between border-white/[0.03] hover:border-gold/20 transition-all">
+              <div className="space-y-4">
+                <div className="flex justify-between items-start">
+                  <Badge color="silver">{item.category}</Badge>
+                  <p className="font-serif text-gold text-lg font-black">₦{item.price.toLocaleString()}</p>
+                </div>
+                <h4 className="text-xl font-serif text-white">{item.name}</h4>
+                <p className="text-xs text-silver leading-relaxed opacity-60 line-clamp-2">{item.description}</p>
+              </div>
+              <GoldButton onClick={() => addToCart(item)} className="mt-8 py-2.5">
+                <span className="text-[10px]">Select Resource</span>
+              </GoldButton>
+            </GlassCard>
+          ))}
         </div>
       </main>
 
-      {/* Floating Toggle Button (Mobile & Collapsed) */}
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => setIsCartOpen(!isCartOpen)}
-        className={`fixed bottom-6 right-6 lg:bottom-12 lg:right-12 z-[100] p-4 lg:p-5 rounded-full bg-gold text-black shadow-2xl shadow-gold/40 flex items-center gap-3 transition-transform ${isCartOpen ? 'scale-0' : 'scale-100'}`}
-      >
-        <ShoppingBagIcon className="w-6 h-6" />
-        {cart.length > 0 && (
-          <span className="absolute -top-1 -right-1 bg-white text-black text-[9px] font-black w-6 h-6 rounded-full flex items-center justify-center border-2 border-gold">
-            {cart.reduce((a, b) => a + b.quantity, 0)}
-          </span>
-        )}
-      </motion.button>
-
-      {/* Backdrop for Mobile */}
-      <AnimatePresence>
-        {isCartOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setIsCartOpen(false)}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] lg:hidden"
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Cart Sidebar (Registry) */}
       <AnimatePresence>
         {isCartOpen && (
           <motion.aside 
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed lg:relative right-0 top-0 bottom-0 w-[90%] xs:w-[450px] lg:w-[450px] border-l border-white/[0.03] bg-black/95 lg:bg-black/40 backdrop-blur-3xl p-6 lg:p-10 flex flex-col z-[90]"
+            initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
+            className="fixed lg:relative right-0 top-0 bottom-0 w-[450px] border-l border-white/[0.03] bg-black/40 backdrop-blur-3xl p-10 flex flex-col z-[90]"
           >
-            <div className="flex-1 flex flex-col min-h-0">
-              <header className="mb-8 lg:mb-10 flex justify-between items-center border-b border-white/5 pb-6">
-                <div className="flex items-center gap-4">
-                  <ShoppingBagIcon className="w-5 h-5 lg:w-6 lg:h-6 text-gold" />
-                  <h3 className="text-xs lg:text-sm font-black uppercase tracking-[0.3em] lg:tracking-[0.4em] text-white">Registry</h3>
-                </div>
-                <div className="flex items-center gap-3 lg:gap-4">
-                  <Badge color="gold">{cart.reduce((a, b) => a + b.quantity, 0)} Items</Badge>
-                  <button 
-                    onClick={() => setIsCartOpen(false)}
-                    className="p-2 hover:bg-white/5 rounded-full text-silver transition-colors"
-                  >
-                    <XMarkIcon className="w-5 h-5 lg:w-6 lg:h-6" />
-                  </button>
-                </div>
-              </header>
+            <header className="mb-10 flex justify-between items-center border-b border-white/5 pb-6">
+              <h3 className="text-sm font-black uppercase tracking-[0.4em] text-white">Transmission Cart</h3>
+              <button onClick={() => setIsCartOpen(false)}><XMarkIcon className="w-6 h-6 text-silver" /></button>
+            </header>
 
-              <div className="flex-1 overflow-y-auto space-y-4 lg:space-y-6 no-scrollbar pr-1 lg:pr-2">
-                {cart.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center opacity-20 py-20">
-                    <ShoppingBagIcon className="w-12 h-12 lg:w-16 lg:h-16 text-silver mb-6" />
-                    <p className="text-[9px] lg:text-[10px] uppercase tracking-[0.5em] font-black">Archive Empty</p>
+            <div className="flex-1 overflow-y-auto space-y-4 no-scrollbar">
+              {cart.map((item) => (
+                <div key={item.id} className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl flex justify-between items-center">
+                  <div>
+                    <p className="text-sm font-bold text-white">{item.name}</p>
+                    <p className="text-[9px] text-gold font-mono">₦{(item.price * item.quantity).toLocaleString()}</p>
                   </div>
-                ) : (
-                  <AnimatePresence mode="popLayout">
-                    {cart.map((item) => (
-                      <motion.div
-                        layout
-                        key={item.id}
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 20 }}
-                        className="p-5 lg:p-6 bg-white/[0.02] border border-white/5 rounded-[24px] lg:rounded-3xl space-y-4 hover:bg-white/[0.05] transition-all group"
-                      >
-                        <div className="flex justify-between items-start">
-                          <div className="space-y-1">
-                            <p className="text-sm font-bold text-white group-hover:text-gold transition-colors">{item.name}</p>
-                            <p className="text-[9px] text-silver font-mono">₦{item.price.toLocaleString()} ea</p>
-                          </div>
-                          <p className="text-sm font-serif text-gold font-black">₦{(item.price * item.quantity).toLocaleString()}</p>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-3 lg:gap-4 bg-black/40 rounded-xl px-3 lg:px-4 py-1.5 lg:py-2 border border-white/5">
-                            <button onClick={() => updateQuantity(item.id, -1)} className="text-gold hover:text-white transition-colors text-lg font-black">-</button>
-                            <span className="text-[10px] lg:text-xs font-mono w-5 lg:w-6 text-center font-bold text-white">{item.quantity}</span>
-                            <button onClick={() => updateQuantity(item.id, 1)} className="text-gold hover:text-white transition-colors text-lg font-black">+</button>
-                          </div>
-                          <button onClick={() => updateQuantity(item.id, -item.quantity)} className="text-[8px] lg:text-[9px] uppercase tracking-widest text-red-400/60 hover:text-red-400 font-black transition-colors">Archive</button>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                )}
-              </div>
-
-              <div className="mt-8 lg:mt-10 pt-8 lg:pt-10 border-t border-white/5 space-y-6 lg:space-y-8">
-                <div className="space-y-3 lg:space-y-4">
-                  <div className="flex justify-between items-center text-[9px] lg:text-[10px] uppercase tracking-widest text-silver font-medium">
-                    <span>Subtotal Settlement</span>
-                    <span>₦{totalAmount.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] lg:text-xs uppercase tracking-[0.3em] lg:tracking-[0.4em] font-black text-white">Final Total</span>
-                    <span className="text-3xl lg:text-4xl font-serif text-gold font-black tracking-tighter">
-                      ₦{totalAmount.toLocaleString()}
-                    </span>
-                  </div>
+                  <Badge color="gold">{item.quantity} Units</Badge>
                 </div>
-
-                <GoldButton 
-                  className="w-full py-5 lg:py-6 text-[10px] lg:text-[11px]" 
-                  disabled={cart.length === 0}
-                  onClick={() => setShowCheckout(true)}
-                >
-                  Establish Transmission
-                </GoldButton>
-              </div>
+              ))}
             </div>
 
-            {/* Live Order Status */}
-            {activeOrders.length > 0 && (
-              <div className="mt-8 pt-8 border-t border-white/5 hidden xs:block">
-                <h4 className="text-[9px] lg:text-[10px] uppercase tracking-[0.3em] lg:tracking-[0.4em] text-silver mb-5 lg:mb-6 font-black opacity-60 leading-none">Active Transmissions</h4>
-                <div className="space-y-3">
-                  {activeOrders.map(order => (
-                    <div key={order.id} className="p-3 lg:p-4 bg-emerald/5 border border-emerald/20 rounded-2xl flex justify-between items-center">
-                      <div>
-                        <p className="text-[8px] lg:text-[9px] font-black text-white uppercase tracking-widest">ID: {order.id.slice(-4).toUpperCase()}</p>
-                        <p className="text-[9px] lg:text-[10px] text-emerald font-bold mt-1 uppercase tracking-widest leading-none">{order.status}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => handlePrintReceipt(order)}
-                          className="p-2 text-emerald hover:text-white transition-colors"
-                        >
-                          <PrinterIcon className="w-4 h-4" />
-                        </motion.button>
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald animate-pulse" />
-                      </div>
-                    </div>
-                  ))}
+            <div className="mt-10 pt-10 border-t border-white/5 space-y-8">
+              <div className="space-y-4">
+                <SilverInput placeholder="Table / Room ID" icon={TableCellsIcon} value={tableId} onChange={(e: any) => setTableId(e.target.value)} />
+                <div className="flex justify-between items-end">
+                  <span className="text-xs uppercase tracking-widest text-silver">Total Settlement</span>
+                  <span className="text-4xl font-serif text-gold font-black">₦{totalAmount.toLocaleString()}</span>
                 </div>
               </div>
-            )}
+              <GoldButton className="w-full py-6" disabled={cart.length === 0 || isSubmitting} onClick={handleInitiateOrder}>
+                Establish Connection
+              </GoldButton>
+            </div>
           </motion.aside>
         )}
       </AnimatePresence>
 
-      {/* Checkout Modal */}
-      <GlassModal 
-        isOpen={showCheckout} 
-        onClose={() => setShowCheckout(false)} 
-        title="Protocol Settlement"
-      >
-        <div className="space-y-8 lg:space-y-10">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-8">
-            <div className="space-y-6 lg:space-y-8">
-              <div className="space-y-3 lg:space-y-4">
-                <label className="text-[9px] lg:text-[10px] uppercase tracking-widest text-silver font-black leading-none">Terminal Identification</label>
-                <SilverInput 
-                  placeholder="Table / Room ID" 
-                  icon={TableCellsIcon}
-                  value={tableId}
-                  onChange={(e: any) => setTableId(e.target.value)}
-                />
+      <GlassModal isOpen={showCheckout} onClose={() => {}} title="Settlement Authorization">
+        <div className="space-y-8">
+          <div className="p-8 bg-gold/5 border border-gold/20 rounded-[32px] text-center space-y-6 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-white/10">
+              <motion.div 
+                className="h-full bg-gold" 
+                initial={{ width: "100%" }} 
+                animate={{ width: "0%" }} 
+                transition={{ duration: 60, ease: "linear" }} 
+              />
+            </div>
+            <div className="flex flex-col items-center gap-4">
+              <ClockIcon className="w-12 h-12 text-gold animate-pulse" />
+              <div className="space-y-1">
+                <p className="text-3xl font-serif text-white font-black">{timeLeft}s</p>
+                <p className="text-[9px] uppercase tracking-[0.3em] text-gold font-black">Payment Synchronization Active</p>
               </div>
-              {(role !== 'guest' && role !== null) && (
-                <div className="space-y-3 lg:space-y-4">
-                  <label className="text-[9px] lg:text-[10px] uppercase tracking-widest text-gold font-black leading-none">Staff Attribution</label>
-                  <SilverInput 
-                    placeholder="Staff Email ID" 
-                    icon={UserIcon}
-                    value={staffEmail}
-                    onChange={(e: any) => setStaffEmail(e.target.value)}
-                  />
-                </div>
-              )}
             </div>
             
-            <div className="p-6 lg:p-8 bg-white/[0.02] border border-white/5 rounded-[24px] lg:rounded-[32px] space-y-4 lg:space-y-6">
-              <div className="flex items-center gap-4 text-emerald mb-2 lg:mb-4">
-                <CreditCardIcon className="w-5 h-5 lg:w-6 lg:h-6" />
-                <h4 className="text-[11px] lg:text-sm font-black uppercase tracking-widest">Direct Settlement</h4>
+            <div className="space-y-3 pt-4 border-t border-white/5 text-left">
+              <div className="flex justify-between">
+                <span className="text-[9px] text-silver uppercase font-bold">Moniepoint Bank</span>
+                <span className="text-[9px] text-gold font-black">5007071458</span>
               </div>
-              <div className="space-y-2">
-                <p className="text-[9px] uppercase tracking-widest text-silver font-black">Moniepoint Bank</p>
-                <p className="text-xl font-mono font-bold text-white tracking-widest">5007071458</p>
-                <p className="text-[10px] text-gold font-bold uppercase tracking-wider">BRIGHT STAR Cave</p>
+              <div className="flex justify-between">
+                <span className="text-[9px] text-silver uppercase font-bold">Account Name</span>
+                <span className="text-[9px] text-white font-black">BRIGHT STAR CAVE</span>
               </div>
-              <div className="pt-4 lg:pt-6 border-t border-white/5">
-                <div className="flex justify-between text-[10px] font-black uppercase text-silver leading-none">
-                  <span>Grand Total</span>
-                  <span className="text-gold">₦{totalAmount.toLocaleString()}</span>
-                </div>
+              <div className="flex justify-between pt-2 border-t border-white/5">
+                <span className="text-xs text-white uppercase font-black">Grand Total</span>
+                <span className="text-lg text-gold font-serif font-black">₦{totalAmount.toLocaleString()}</span>
               </div>
             </div>
           </div>
 
-          <EmeraldButton 
-            className="w-full py-5 lg:py-6 text-[10px] lg:text-sm" 
-            onClick={handleCheckout}
-            disabled={isSubmitting || !tableId}
-          >
-            {isSubmitting ? "Synchronizing..." : "Initialize High-Tier Order"}
-          </EmeraldButton>
+          <div className="grid grid-cols-2 gap-4">
+            <button 
+              onClick={() => handleCancelOrder()}
+              className="flex items-center justify-center gap-3 py-5 rounded-2xl bg-white/5 border border-white/10 text-silver hover:bg-red-500/10 hover:text-red-400 transition-all"
+            >
+              <NoSymbolIcon className="w-5 h-5 opacity-40" />
+              <span className="text-[10px] font-black uppercase tracking-widest">Discard</span>
+            </button>
+            <EmeraldButton onClick={handleConfirmPayment} className="py-5" disabled={isSubmitting}>
+              <div className="flex items-center gap-3">
+                <BanknotesIcon className="w-5 h-5" />
+                <span className="text-[10px]">Confirm Paid</span>
+              </div>
+            </EmeraldButton>
+          </div>
+          
+          <p className="text-[8px] text-center text-silver/40 uppercase tracking-[0.2em]">Transaction records are permanent and audited</p>
         </div>
       </GlassModal>
 
-      <Toast 
-        message={toast.message} 
-        type={toast.type} 
-        isVisible={toast.visible} 
-        onClose={() => setToast({ ...toast, visible: false })} 
-      />
+      <Toast message={toast.message} type={toast.type} isVisible={toast.visible} onClose={() => setToast({ ...toast, visible: false })} />
     </div>
   );
 };

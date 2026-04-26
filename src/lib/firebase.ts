@@ -12,6 +12,7 @@ import {
   query, 
   where, 
   limit,
+  serverTimestamp,
   getDocFromServer
 } from 'firebase/firestore';
 
@@ -25,21 +26,14 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
-if (!firebaseConfig.apiKey) {
-  console.error("Firebase API Key is missing. Check your .env file.");
-}
-
 const rawDbId = (import.meta as any).env.VITE_FIREBASE_FIRESTORE_DATABASE_ID;
-// Force (default) if the ID is missing or belongs to the old project
 const dbId = (!rawDbId || rawDbId.includes('ai-studio-3544ee')) ? '(default)' : rawDbId;
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app, dbId);
 
-// Initialize Analytics conditionally
 export const analytics = isSupported().then(yes => yes ? getAnalytics(app) : null);
-
 export const googleProvider = new GoogleAuthProvider();
 
 export type UserRole = 'admin' | 'staff_bar' | 'staff_waiter' | 'staff' | 'guest';
@@ -49,61 +43,63 @@ export const getUserRole = async (uid: string, email?: string | null): Promise<U
   const targetEmail = email || auth.currentUser?.email;
   
   if (!uid && !targetEmail) return 'guest';
-  
-  // Super Admin Check
   if (targetEmail === 'contact@tricodepro' || targetEmail === env.VITE_ADMIN_EMAIL) return 'admin';
 
   try {
     const adminDoc = await getDoc(doc(db, "admins", uid));
-    if (adminDoc.exists()) {
-      return adminDoc.data().role as UserRole;
-    }
+    if (adminDoc.exists()) return adminDoc.data().role as UserRole;
     
     if (targetEmail) {
       const q = query(collection(db, "admins"), where("email", "==", targetEmail), limit(1));
       const qSnap = await getDocs(q);
-      if (!qSnap.empty) {
-        return qSnap.docs[0].data().role as UserRole;
-      }
+      if (!qSnap.empty) return qSnap.docs[0].data().role as UserRole;
     }
   } catch (error) {
     console.error("Error fetching user role:", error);
   }
-
   return 'guest';
 };
 
-// Menu Management Utilities
-export const updateMenuItem = async (id: string, data: any) => {
-  const menuRef = doc(db, "menu", id);
-  await setDoc(menuRef, { ...data, updatedAt: serverTimestamp() }, { merge: true });
-};
-
-export const createMenuItem = async (data: any) => {
-  const menuRef = doc(collection(db, "menu"));
-  await setDoc(menuRef, { ...data, id: menuRef.id, createdAt: serverTimestamp() });
-};
-
-// Inventory Seeding Utility
-export const seedInventory = async (menuData: any[]) => {
+// Seeding Utility for Data.json
+export const seedDatabaseFromJSON = async (jsonData: any) => {
   try {
-    const inventorySnap = await getDocs(collection(db, "inventory"));
-    if (inventorySnap.empty) {
-      const batch = writeBatch(db);
-      menuData.forEach(item => {
-        const docRef = doc(db, "inventory", item.id);
-        batch.set(docRef, {
-          ...item,
-          lastRestocked: new Date(),
-          soldCount: 0
+    const batch = writeBatch(db);
+    const menuItems = jsonData.menu || [];
+    
+    for (const item of menuItems) {
+      // Seed Menu Collection
+      const menuRef = doc(db, "menu", item.id);
+      batch.set(menuRef, {
+        ...item,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
+      // Seed Inventory Collection
+      const invRef = doc(db, "inventory", item.id);
+      const invSnap = await getDoc(invRef);
+      if (!invSnap.exists()) {
+        batch.set(invRef, {
+          id: item.id,
+          name: item.name,
+          category: item.category,
+          stock: item.stock || 0,
+          soldCount: 0,
+          lastRestocked: serverTimestamp()
         });
-      });
-      await batch.commit();
-      console.log("Inventory seeded successfully");
+      }
     }
+    
+    await batch.commit();
+    console.log("Database successfully populated from JSON archive.");
   } catch (err) {
-    console.error("Error seeding inventory:", err);
+    console.error("Seeding failed:", err);
   }
+};
+
+export const getStaffList = async () => {
+  const q = query(collection(db, "admins"), where("role", "in", ["staff", "staff_bar", "staff_waiter"]));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 };
 
 export const signInWithGoogle = async () => {
@@ -111,7 +107,6 @@ export const signInWithGoogle = async () => {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
   } catch (error) {
-    console.error("Authentication error:", error);
     throw error;
   }
 };
@@ -121,62 +116,6 @@ export const loginWithEmail = async (email: string, password: string) => {
     const result = await signInWithEmailAndPassword(auth, email, password);
     return result.user;
   } catch (error) {
-    console.error("Login error:", error);
     throw error;
   }
-};
-
-export const signInWithAdminCredentials = async () => {
-  const env = (import.meta as any).env;
-  const email = env.VITE_ADMIN_EMAIL;
-  const password = env.VITE_ADMIN_PASSWORD;
-  
-  if (!email || !password) {
-    throw new Error("Admin credentials not configured in environment.");
-  }
-
-  return loginWithEmail(email, password);
-};
-
-// Connection test
-async function testConnection() {
-  try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration or connectivity.");
-    }
-  }
-}
-testConnection();
-
-export interface FirestoreErrorInfo {
-  error: string;
-  operationType: 'create' | 'update' | 'delete' | 'list' | 'get' | 'write';
-  path: string | null;
-  authInfo: {
-    userId: string;
-    email: string;
-    emailVerified: boolean;
-    isAnonymous: boolean;
-    providerInfo: any[];
-  }
-}
-
-export const handleFirestoreError = (error: any, operationType: any, path: string | null) => {
-  const user = auth.currentUser;
-  const errorInfo: FirestoreErrorInfo = {
-    error: error.message || 'Unknown Firestore error',
-    operationType,
-    path,
-    authInfo: {
-      userId: user?.uid || 'anonymous',
-      email: user?.email || '',
-      emailVerified: user?.emailVerified || false,
-      isAnonymous: user?.isAnonymous || true,
-      providerInfo: user?.providerData || []
-    }
-  };
-  console.error("Firestore Error:", errorInfo);
-  throw new Error(JSON.stringify(errorInfo));
 };

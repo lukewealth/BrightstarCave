@@ -30,7 +30,7 @@ import {
   increment,
   getDoc
 } from "firebase/firestore";
-import { db, getUserRole, UserRole } from "../lib/firebase";
+import { db, getUserRole, UserRole, getStaffList } from "../lib/firebase";
 import { menuItems, MenuItem } from "../data/menu";
 import { 
   GlassCard, 
@@ -59,19 +59,23 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
   const [activeTab, setActiveTab] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [tableId, setTableId] = useState("");
-  const [staffEmail, setStaffEmail] = useState("");
+  const [staffList, setStaffList] = useState<any[]>([]);
+  const [selectedStaff, setSelectedStaff] = useState<any>(null);
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(60);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error', visible: boolean }>({ message: '', type: 'success', visible: false });
 
-  // Fetch Dynamic Menu
+  // Fetch Dynamic Menu and Staff List
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "menu"), (snap) => {
+    const unsubMenu = onSnapshot(collection(db, "menu"), (snap) => {
       const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as MenuItem[];
       setMenuItems(items);
     });
-    return () => unsub();
+
+    getStaffList().then(setStaffList);
+
+    return () => unsubMenu();
   }, []);
 
   const categories = useMemo(() => ["All", ...Array.from(new Set(menuItems.map(i => i.category)))], [menuItems]);
@@ -95,7 +99,7 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
     }
   }, [user]);
 
-  // Payment Timer Logic (60s Max)
+  // Payment Timer Logic
   useEffect(() => {
     let interval: any;
     if (showCheckout && pendingOrderId && timeLeft > 0) {
@@ -137,10 +141,11 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
             <div>Luxury Gastronomy</div>
           </div>
           <div class="staff">
+            Ref: ${order.id.slice(-8)}<br>
             Date: ${order.formattedDate}<br>
             Time: ${order.formattedTime}<br>
             Table: ${order.table}<br>
-            Staff: ${order.staffName || 'Guest'}
+            Staff: ${order.staffName || 'Guest Order'}
           </div>
           <div class="items">
             ${order.items.map((i: any) => `
@@ -156,7 +161,6 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
           </div>
           <div class="footer">
             Moniepoint: 5007071458<br>
-            Thank you for your visit!<br>
             * Brightstar Encryption v4.0 *
           </div>
           <script>window.print(); setTimeout(() => window.close(), 500);</script>
@@ -170,6 +174,11 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
   const handleInitiateOrder = async () => {
     if (!tableId) {
       showToast("Please provide Table/Room ID", "error");
+      return;
+    }
+
+    if (!user && !selectedStaff) {
+      showToast("Please select attending staff member", "error");
       return;
     }
     
@@ -188,10 +197,10 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
         updatedAt: serverTimestamp(),
         formattedDate: now.toLocaleDateString(),
         formattedTime: now.toLocaleTimeString(),
-        isStaffAssisted: role !== 'guest' && role !== null,
-        staffId: role !== 'guest' ? user?.uid : null,
-        staffName: role !== 'guest' ? (user?.displayName || user?.email?.split('@')[0]) : null,
-        staffEmail: role !== 'guest' ? user?.email : (staffEmail || null),
+        isStaffAssisted: true,
+        staffId: user ? user.uid : selectedStaff.id,
+        staffName: user ? (user.displayName || user.email?.split('@')[0]) : selectedStaff.email.split('@')[0],
+        staffEmail: user ? user.email : selectedStaff.email,
       };
 
       const docRef = await addDoc(collection(db, "orders"), orderData);
@@ -199,7 +208,7 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
       setTimeLeft(60);
       setShowCheckout(true);
     } catch (err) {
-      showToast("Failed to initiate protocol", "error");
+      showToast("Transmission initiation failed", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -217,7 +226,6 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
         paymentConfirmedAt: serverTimestamp()
       });
 
-      // Deplete Inventory
       for (const item of cart) {
         const itemRef = doc(db, "inventory", item.id);
         await updateDoc(itemRef, {
@@ -235,17 +243,16 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
       setPendingOrderId(null);
       setShowCheckout(false);
       setIsCartOpen(false);
-      showToast("Transmission Successful. Receipt Generated.");
+      showToast("Settlement Audited. Transmission Logged.");
     } catch (err) {
-      showToast("Confirmation failed", "error");
+      showToast("Audit confirmation failed", "error");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleCancelOrder = async (reason = "Discarded by User") => {
+  const handleCancelOrder = async (reason = "Manual Discard") => {
     if (!pendingOrderId) return;
-    
     try {
       await updateDoc(doc(db, "orders", pendingOrderId), {
         status: "cancelled",
@@ -261,6 +268,10 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
   };
 
   const addToCart = (item: MenuItem) => {
+    if (item.stock <= 0) {
+      showToast(`${item.name} is currently unavailable`, "error");
+      return;
+    }
     setCart(prev => {
       const existing = prev.find(i => i.id === item.id);
       if (existing) {
@@ -276,7 +287,7 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
     <div className="flex h-full bg-primary text-white overflow-hidden relative font-sans">
       <main className="flex-1 overflow-y-auto p-6 lg:p-12 space-y-8 no-scrollbar">
         <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-          <SectionTitle subtitle="Gastronomy & Leisure" title="Menu Selection" />
+          <SectionTitle subtitle="Gastronomy & Leisure" title="Menu Selections" />
           <SilverInput 
             placeholder="Search flavor..." 
             icon={MagnifyingGlassIcon} 
@@ -298,11 +309,19 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
                   <Badge color="silver">{item.category}</Badge>
                   <p className="font-serif text-gold text-lg font-black">₦{item.price.toLocaleString()}</p>
                 </div>
-                <h4 className="text-xl font-serif text-white">{item.name}</h4>
-                <p className="text-xs text-silver leading-relaxed opacity-60 line-clamp-2">{item.description}</p>
+                <h4 className="text-xl font-serif text-white leading-tight">{item.name}</h4>
+                <div className="flex items-center gap-3">
+                   <p className={`text-[10px] font-black uppercase tracking-widest ${item.stock < 10 ? 'text-red-400' : 'text-emerald'}`}>
+                     {item.stock > 0 ? `${item.stock} Available` : 'Unavailable'}
+                   </p>
+                </div>
               </div>
-              <GoldButton onClick={() => addToCart(item)} className="mt-8 py-2.5">
-                <span className="text-[10px]">Select Resource</span>
+              <GoldButton 
+                onClick={() => addToCart(item)} 
+                className="mt-8 py-2.5"
+                disabled={item.stock <= 0}
+              >
+                <span className="text-[10px] uppercase font-black tracking-widest">Select Item</span>
               </GoldButton>
             </GlassCard>
           ))}
@@ -327,7 +346,11 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
                     <p className="text-sm font-bold text-white">{item.name}</p>
                     <p className="text-[9px] text-gold font-mono">₦{(item.price * item.quantity).toLocaleString()}</p>
                   </div>
-                  <Badge color="gold">{item.quantity} Units</Badge>
+                  <div className="flex items-center gap-4">
+                    <button onClick={() => setCart(prev => prev.map(i => i.id === item.id ? { ...i, quantity: Math.max(0, i.quantity - 1) } : i).filter(i => i.quantity > 0))} className="text-gold text-xl font-bold">-</button>
+                    <Badge color="gold">{item.quantity}</Badge>
+                    <button onClick={() => setCart(prev => prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i))} className="text-gold text-xl font-bold">+</button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -335,71 +358,58 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
             <div className="mt-10 pt-10 border-t border-white/5 space-y-8">
               <div className="space-y-4">
                 <SilverInput placeholder="Table / Room ID" icon={TableCellsIcon} value={tableId} onChange={(e: any) => setTableId(e.target.value)} />
+                
+                {!user && (
+                  <div className="space-y-2">
+                    <label className="text-[9px] uppercase tracking-widest text-silver font-black">Attending Staff Selection</label>
+                    <select 
+                      onChange={(e) => setSelectedStaff(staffList.find(s => s.id === e.target.value))}
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white focus:outline-none focus:border-gold/30"
+                    >
+                      <option value="">Select Operator</option>
+                      {staffList.map(s => <option key={s.id} value={s.id}>{s.email.split('@')[0].toUpperCase()}</option>)}
+                    </select>
+                  </div>
+                )}
+
                 <div className="flex justify-between items-end">
-                  <span className="text-xs uppercase tracking-widest text-silver">Total Settlement</span>
+                  <span className="text-xs uppercase tracking-widest text-silver">Final Settlement</span>
                   <span className="text-4xl font-serif text-gold font-black">₦{totalAmount.toLocaleString()}</span>
                 </div>
               </div>
               <GoldButton className="w-full py-6" disabled={cart.length === 0 || isSubmitting} onClick={handleInitiateOrder}>
-                Establish Connection
+                Establish Audit Connection
               </GoldButton>
             </div>
           </motion.aside>
         )}
       </AnimatePresence>
 
-      <GlassModal isOpen={showCheckout} onClose={() => {}} title="Settlement Authorization">
+      <GlassModal isOpen={showCheckout} onClose={() => {}} title="Settlement Synchronization">
         <div className="space-y-8">
           <div className="p-8 bg-gold/5 border border-gold/20 rounded-[32px] text-center space-y-6 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1 bg-white/10">
-              <motion.div 
-                className="h-full bg-gold" 
-                initial={{ width: "100%" }} 
-                animate={{ width: "0%" }} 
-                transition={{ duration: 60, ease: "linear" }} 
-              />
+              <motion.div className="h-full bg-gold" initial={{ width: "100%" }} animate={{ width: "0%" }} transition={{ duration: 60, ease: "linear" }} />
             </div>
             <div className="flex flex-col items-center gap-4">
               <ClockIcon className="w-12 h-12 text-gold animate-pulse" />
               <div className="space-y-1">
                 <p className="text-3xl font-serif text-white font-black">{timeLeft}s</p>
-                <p className="text-[9px] uppercase tracking-[0.3em] text-gold font-black">Payment Synchronization Active</p>
+                <p className="text-[9px] uppercase tracking-[0.3em] text-gold font-black">Audit Window Active</p>
               </div>
             </div>
             
             <div className="space-y-3 pt-4 border-t border-white/5 text-left">
-              <div className="flex justify-between">
-                <span className="text-[9px] text-silver uppercase font-bold">Moniepoint Bank</span>
-                <span className="text-[9px] text-gold font-black">5007071458</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[9px] text-silver uppercase font-bold">Account Name</span>
-                <span className="text-[9px] text-white font-black">BRIGHT STAR CAVE</span>
-              </div>
-              <div className="flex justify-between pt-2 border-t border-white/5">
-                <span className="text-xs text-white uppercase font-black">Grand Total</span>
-                <span className="text-lg text-gold font-serif font-black">₦{totalAmount.toLocaleString()}</span>
-              </div>
+              <div className="flex justify-between"><span className="text-[9px] text-silver uppercase font-bold">Moniepoint Bank</span><span className="text-[9px] text-gold font-black">5007071458</span></div>
+              <div className="flex justify-between"><span className="text-[9px] text-silver uppercase font-bold">Account Name</span><span className="text-[9px] text-white font-black">BRIGHT STAR CAVE</span></div>
+              <div className="flex justify-between pt-2 border-t border-white/5"><span className="text-xs text-white uppercase font-black">Audit Value</span><span className="text-lg text-gold font-serif font-black">₦{totalAmount.toLocaleString()}</span></div>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <button 
-              onClick={() => handleCancelOrder()}
-              className="flex items-center justify-center gap-3 py-5 rounded-2xl bg-white/5 border border-white/10 text-silver hover:bg-red-500/10 hover:text-red-400 transition-all"
-            >
-              <NoSymbolIcon className="w-5 h-5 opacity-40" />
-              <span className="text-[10px] font-black uppercase tracking-widest">Discard</span>
-            </button>
-            <EmeraldButton onClick={handleConfirmPayment} className="py-5" disabled={isSubmitting}>
-              <div className="flex items-center gap-3">
-                <BanknotesIcon className="w-5 h-5" />
-                <span className="text-[10px]">Confirm Paid</span>
-              </div>
-            </EmeraldButton>
+            <button onClick={() => handleCancelOrder()} className="flex items-center justify-center gap-3 py-5 rounded-2xl bg-white/5 border border-white/10 text-silver hover:bg-red-500/10 hover:text-red-400 transition-all"><NoSymbolIcon className="w-5 h-5 opacity-40" /><span className="text-[10px] font-black uppercase tracking-widest">Discard</span></button>
+            <EmeraldButton onClick={handleConfirmPayment} className="py-5" disabled={isSubmitting}><div className="flex items-center gap-3"><BanknotesIcon className="w-5 h-5" /><span className="text-[10px]">Confirm Paid</span></div></EmeraldButton>
           </div>
-          
-          <p className="text-[8px] text-center text-silver/40 uppercase tracking-[0.2em]">Transaction records are permanent and audited</p>
         </div>
       </GlassModal>
 

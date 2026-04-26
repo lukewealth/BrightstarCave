@@ -17,7 +17,7 @@ import {
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence, useScroll, useTransform } from "motion/react";
 import { useState, useEffect, useRef } from "react";
-import { OptimizedImage } from "../components/design-system/Primitive";
+import { OptimizedImage, GoldButton } from "../components/design-system/Primitive";
 
 interface Feature {
   id: string;
@@ -123,12 +123,12 @@ const HeroStar = ({ className = "", color = "text-gold" }: { className?: string,
 );
 
 const SectionHeading = ({ subtitle, title, color = "gold" }: { subtitle: string, title: string, color?: "gold" | "silver" | "emerald" }) => (
-  <div className="space-y-4 mb-16">
-    <div className="flex items-center gap-4">
+  <div className="space-y-4 mb-10 lg:mb-16">
+    <div className="flex items-center gap-3 lg:gap-4">
       <HeroStar color={`text-${color}`} />
-      <span className={`text-${color} text-[10px] font-bold tracking-[0.4em] uppercase`}>{subtitle}</span>
+      <span className={`text-${color} text-[8px] lg:text-[10px] font-bold tracking-[0.4em] uppercase`}>{subtitle}</span>
     </div>
-    <h2 className="text-4xl md:text-6xl font-serif text-primary leading-tight">{title}</h2>
+    <h2 className="text-3xl lg:text-6xl font-serif text-primary leading-tight">{title}</h2>
   </div>
 );
 
@@ -149,13 +149,13 @@ export const LandingPage = () => {
     const factTimer = setInterval(() => {
       setActiveFact((prev) => (prev + 1) % funnyFacts.length);
     }, 4000);
-    const hubspotTimer = setInterval(() => {
+    const hubspotIndexTimer = setInterval(() => {
       setHubspotIndex((prev) => (prev + 1) % hubspotImages.length);
     }, 5000);
     return () => {
       clearInterval(slideTimer);
       clearInterval(factTimer);
-      clearInterval(hubspotTimer);
+      clearInterval(hubspotIndexTimer);
     };
   }, []);
 
@@ -174,7 +174,7 @@ export const LandingPage = () => {
   return (
     <div className="bg-primary text-primary min-h-screen selection:bg-gold/20">
       {/* Hero Section with Parallax */}
-      <section ref={heroRef} className="relative h-screen w-full overflow-hidden">
+      <section ref={heroRef} className="relative h-[90vh] lg:h-screen w-full overflow-hidden">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentSlide}
@@ -204,68 +204,68 @@ export const LandingPage = () => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 1.02, y: -20 }}
             transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-            className="space-y-6"
+            className="space-y-6 max-w-4xl"
           >
             <div className="flex justify-center mb-4">
               <HeroStar color="text-silver" />
             </div>
-            <span className="text-silver text-[12px] font-bold tracking-[0.6em] uppercase">
+            <span className="text-silver text-[10px] lg:text-[12px] font-bold tracking-[0.4em] lg:tracking-[0.6em] uppercase">
               {heroSlides[currentSlide].subtitle}
             </span>
-            <h1 className="text-6xl md:text-9xl font-serif text-white leading-tight">
+            <h1 className="text-4xl xs:text-5xl md:text-7xl lg:text-9xl font-serif text-white leading-tight">
               {heroSlides[currentSlide].title.split(" ").map((word, i) => (
                 <span key={i} className={i === 1 ? "text-emerald italic" : i === 2 ? "text-gold" : ""}>{word} </span>
               ))}
             </h1>
-            <div className="flex flex-col md:flex-row gap-6 justify-center pt-8">
-              <Link to="/orders" className="group flex items-center gap-3 px-12 py-5 bg-gold text-black font-black uppercase text-[10px] tracking-widest hover:brightness-110 transition-all shadow-xl shadow-gold/10">
-                Establish Reservation <MoveRight className="group-hover:translate-x-2 transition-transform" size={16} />
+            <div className="flex flex-col md:flex-row gap-4 lg:gap-6 justify-center pt-6 lg:pt-8 px-4">
+              <Link to="/orders" className="group flex items-center justify-center gap-3 px-8 lg:px-12 py-4 lg:py-5 bg-gold text-black font-black uppercase text-[9px] lg:text-[10px] tracking-widest hover:brightness-110 transition-all shadow-xl shadow-gold/10">
+                Establish Reservation <MoveRight className="group-hover:translate-x-2 transition-transform" size={14} />
               </Link>
             </div>
           </motion.div>
         </div>
 
         {/* Slide Indicators */}
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-30 flex items-center gap-6">
-          <span className="text-silver/30 text-[10px] font-mono font-bold tracking-widest">01</span>
+        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-30 flex items-center gap-4 lg:gap-6">
+          <span className="text-silver/30 text-[8px] lg:text-[10px] font-mono font-bold tracking-widest">01</span>
           <div className="flex gap-2">
             {heroSlides.map((_, i) => (
               <button
                 key={i}
                 onClick={() => setCurrentSlide(i)}
-                className={`h-[2px] transition-all duration-700 ${currentSlide === i ? "w-16 bg-gold" : "w-4 bg-white/10"}`}
+                className={`h-[1px] lg:h-[2px] transition-all duration-700 ${currentSlide === i ? "w-10 lg:w-16 bg-gold" : "w-3 lg:w-4 bg-white/10"}`}
               />
             ))}
           </div>
-          <span className="text-silver/30 text-[10px] font-mono font-bold tracking-widest">0{heroSlides.length}</span>
+          <span className="text-silver/30 text-[8px] lg:text-[10px] font-mono font-bold tracking-widest">0{heroSlides.length}</span>
         </div>
       </section>
 
       {/* Signature Vibe Section (Z-Pattern) */}
-      <section className="py-32 px-8 max-w-7xl mx-auto space-y-40">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-20 items-center">
+      <section className="py-20 lg:py-32 px-6 lg:px-8 max-w-7xl mx-auto space-y-24 lg:space-y-40">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           <motion.div 
-            initial={{ opacity: 0, x: -50 }}
+            initial={{ opacity: 0, x: -30 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
-            className="space-y-8"
+            className="space-y-6 lg:space-y-8"
           >
             <SectionHeading subtitle="Our Philosophy" title="African Soul, Asian Precision" color="emerald" />
-            <p className="text-lg text-secondary leading-relaxed font-light">
+            <p className="text-base lg:text-lg text-secondary leading-relaxed font-light">
               Brightstar Cave is more than a destination; it's a crossroads. We've meticulously woven the vibrant, earthy spirit of West Africa with the quiet, disciplined elegance of the East.
             </p>
             <div className="flex items-center gap-2">
-              <div className="emerald-dot" />
-              <span className="text-[10px] uppercase tracking-widest text-emerald font-bold">Nature-Synchronized</span>
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald" />
+              <span className="text-[9px] lg:text-[10px] uppercase tracking-widest text-emerald font-bold">Nature-Synchronized</span>
             </div>
           </motion.div>
           <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             className="relative"
           >
-            <div className="absolute -inset-4 border border-silver translate-x-4 translate-y-4 opacity-10" />
+            <div className="absolute -inset-4 border border-silver translate-x-4 translate-y-4 opacity-10 hidden lg:block" />
             <OptimizedImage 
               src="/images/IMG_1775 2.HEIC" 
               alt="Philosophy"
@@ -276,9 +276,9 @@ export const LandingPage = () => {
         </div>
 
         {/* HubSpot Sleek Slider */}
-        <div className="py-20">
+        <div className="py-10 lg:py-20">
           <SectionHeading subtitle="The Hubspot" title="Sleek Visual Flow" color="silver" />
-          <div className="relative h-[600px] rounded-[32px] overflow-hidden glass-emerald group border border-white/5 bg-black/20">
+          <div className="relative h-[400px] lg:h-[600px] rounded-[32px] overflow-hidden glass-emerald group border border-white/5 bg-black/20">
             <AnimatePresence mode="wait">
               <motion.div
                 key={hubspotIndex}
@@ -299,16 +299,16 @@ export const LandingPage = () => {
               </motion.div>
             </AnimatePresence>
             
-            <div className="absolute bottom-10 left-10 z-20">
-              <p className="text-emerald font-mono text-[10px] tracking-[0.4em] mb-2 uppercase font-bold">ELEMENTAL FEED</p>
-              <h3 className="text-2xl font-serif text-white uppercase tracking-widest">Vibe Synchronization</h3>
+            <div className="absolute bottom-6 lg:bottom-10 left-6 lg:left-10 z-20">
+              <p className="text-emerald font-mono text-[8px] lg:text-[10px] tracking-[0.4em] mb-2 uppercase font-bold">ELEMENTAL FEED</p>
+              <h3 className="text-xl lg:text-2xl font-serif text-white uppercase tracking-widest">Vibe Synchronization</h3>
             </div>
 
-            <div className="absolute bottom-10 right-10 z-20 flex gap-2">
+            <div className="absolute bottom-6 lg:bottom-10 right-6 lg:right-10 z-20 flex gap-2">
               {hubspotImages.map((_, i) => (
                 <div 
                   key={i} 
-                  className={`size-1.5 rounded-full transition-all duration-700 ${hubspotIndex === i ? "w-8 bg-emerald" : "bg-white/10"}`} 
+                  className={`size-1 lg:size-1.5 rounded-full transition-all duration-700 ${hubspotIndex === i ? "w-6 lg:w-8 bg-emerald" : "bg-white/10"}`} 
                 />
               ))}
             </div>
@@ -317,11 +317,11 @@ export const LandingPage = () => {
       </section>
 
       {/* Interactive Guest Journey */}
-      <section className="py-32 bg-secondary/30 border-y border-white/5 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-8">
+      <section className="py-20 lg:py-32 bg-secondary/30 border-y border-white/5 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <SectionHeading subtitle="The Sequence" title="Your Experience Journey" color="gold" />
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-12 gap-y-24 relative mt-20">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-12 gap-y-16 lg:gap-y-24 relative mt-10 lg:mt-20">
             {[
               { step: "01", label: "Arrival", desc: "Pass through the Obsidian Gates into the Zen Garden." },
               { step: "02", label: "Vantage", desc: "A frame of snooker accompanied by 18-year aged Scotch." },
@@ -336,11 +336,11 @@ export const LandingPage = () => {
                 transition={{ delay: i * 0.1 }}
                 className="group relative"
               >
-                <span className="absolute -top-16 -left-4 text-[120px] font-serif text-white/[0.02] leading-none select-none group-hover:text-gold/[0.05] transition-colors pointer-events-none">
+                <span className="absolute -top-12 lg:-top-16 -left-4 text-[80px] lg:text-[120px] font-serif text-white/[0.02] leading-none select-none group-hover:text-gold/[0.05] transition-colors pointer-events-none">
                   {item.step}
                 </span>
-                <div className="relative z-10 space-y-4">
-                  <h4 className="text-xl font-bold tracking-[0.2em] text-primary uppercase">{item.label}</h4>
+                <div className="relative z-10 space-y-3 lg:space-y-4">
+                  <h4 className="text-lg lg:text-xl font-bold tracking-[0.2em] text-primary uppercase">{item.label}</h4>
                   <div className="w-12 h-[1px] bg-silver/30 group-hover:w-full transition-all duration-700" />
                   <p className="text-sm text-secondary leading-relaxed font-light">{item.desc}</p>
                 </div>
@@ -351,19 +351,19 @@ export const LandingPage = () => {
       </section>
 
       {/* The Asymmetric Collection Grid */}
-      <section className="py-32 px-8 max-w-7xl mx-auto">
+      <section className="py-20 lg:py-32 px-6 lg:px-8 max-w-7xl mx-auto">
         <SectionHeading subtitle="The Selection" title="Boutique Experiences" color="silver" />
 
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 lg:gap-8">
           {features.map((feature, i) => (
             <motion.div
               key={feature.id}
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
               onClick={() => setSelectedFeature(feature)}
-              className={`group relative h-[600px] overflow-hidden rounded-[32px] cursor-pointer glass-card border-white/5 ${
+              className={`group relative h-[450px] lg:h-[600px] overflow-hidden rounded-[32px] cursor-pointer glass-card border-white/5 ${
                 i === 0 || i === 3 ? "md:col-span-7" : "md:col-span-5"
               } hover:border-emerald/20 transition-all`}
             >
@@ -371,18 +371,18 @@ export const LandingPage = () => {
                 src={feature.img}
                 alt={feature.title}
                 aspectRatio="h-full"
-                className="w-full h-full opacity-30 group-hover:opacity-100 transition-all duration-1000"
+                className="w-full h-full opacity-40 lg:opacity-30 group-hover:opacity-100 transition-all duration-1000"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-primary via-transparent to-transparent opacity-95" />
               
-              <div className="absolute top-8 right-8">
+              <div className="absolute top-6 lg:top-8 right-6 lg:right-8">
                 <HeroStar color={i % 2 === 0 ? "text-emerald" : "text-gold"} />
               </div>
 
-              <div className="absolute bottom-0 left-0 p-12 w-full">
-                <span className="text-silver text-[10px] font-bold tracking-[0.4em] uppercase mb-3 block">{feature.category}</span>
-                <h4 className="text-4xl font-serif text-white mb-4">{feature.title}</h4>
-                <div className="flex items-center gap-3 text-silver text-[10px] font-bold uppercase tracking-widest translate-y-10 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500">
+              <div className="absolute bottom-0 left-0 p-8 lg:p-12 w-full">
+                <span className="text-silver text-[8px] lg:text-[10px] font-bold tracking-[0.4em] uppercase mb-2 lg:mb-3 block">{feature.category}</span>
+                <h4 className="text-2xl lg:text-4xl font-serif text-white mb-4">{feature.title}</h4>
+                <div className="flex items-center gap-3 text-silver text-[9px] lg:text-[10px] font-bold uppercase tracking-widest translate-y-4 lg:translate-y-10 opacity-100 lg:opacity-0 lg:group-hover:translate-y-0 lg:group-hover:opacity-100 transition-all duration-500">
                   Access Protocol <ArrowRight size={14} />
                 </div>
               </div>
@@ -392,27 +392,27 @@ export const LandingPage = () => {
       </section>
 
       {/* Wellness & Wit Section */}
-      <section className="py-32 bg-secondary/10 relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-8 grid grid-cols-1 lg:grid-cols-2 gap-20">
-          <div className="space-y-12">
+      <section className="py-20 lg:py-32 bg-secondary/10 relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-20">
+          <div className="space-y-10 lg:space-y-12">
             <SectionHeading subtitle="Curated Wit" title="Observations from the Cave" color="silver" />
             <div className="h-40 relative">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeFact}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
+                  exit={{ opacity: 0, y: -15 }}
                   transition={{ duration: 0.8, ease: "anticipate" }}
-                  className="flex items-start gap-8"
+                  className="flex items-start gap-4 lg:gap-8"
                 >
-                  <div className="p-5 bg-silver/5 rounded-full text-silver shrink-0 border border-white/5">
+                  <div className="p-4 lg:p-5 bg-silver/5 rounded-full text-silver shrink-0 border border-white/5">
                     {(() => {
                       const FactIcon = funnyFacts[activeFact].icon;
-                      return <FactIcon size={32} />;
+                      return <FactIcon size={24} className="lg:w-8 lg:h-8" />;
                     })()}
                   </div>
-                  <p className="text-2xl font-light leading-relaxed italic text-secondary">
+                  <p className="text-lg lg:text-2xl font-light leading-relaxed italic text-secondary">
                     "{funnyFacts[activeFact].text}"
                   </p>
                 </motion.div>
@@ -420,9 +420,9 @@ export const LandingPage = () => {
             </div>
           </div>
 
-          <div className="space-y-12">
+          <div className="space-y-10 lg:space-y-12">
             <SectionHeading subtitle="Heal Tips" title="The Wellness Log" color="emerald" />
-            <div className="grid gap-8">
+            <div className="grid gap-6 lg:gap-8">
               {healthTips.map((tip, i) => (
                 <motion.div
                   key={i}
@@ -430,14 +430,14 @@ export const LandingPage = () => {
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.2 }}
-                  className="p-8 glass-emerald rounded-3xl flex gap-8 group hover:border-emerald/40 transition-all"
+                  className="p-6 lg:p-8 glass-emerald rounded-3xl flex gap-6 lg:gap-8 group hover:border-emerald/40 transition-all"
                 >
-                  <div className="text-emerald group-hover:rotate-12 transition-transform duration-500">
-                    <tip.icon size={30} />
+                  <div className="text-emerald group-hover:rotate-12 transition-transform duration-500 shrink-0">
+                    <tip.icon size={24} className="lg:w-[30px] lg:h-[30px]" />
                   </div>
                   <div>
-                    <h5 className="font-bold text-sm uppercase tracking-widest text-primary mb-3">{tip.title}</h5>
-                    <p className="text-sm text-secondary leading-relaxed font-light">{tip.text}</p>
+                    <h5 className="font-bold text-xs lg:text-sm uppercase tracking-widest text-primary mb-2 lg:mb-3">{tip.title}</h5>
+                    <p className="text-xs lg:text-sm text-secondary leading-relaxed font-light">{tip.text}</p>
                   </div>
                 </motion.div>
               ))}
@@ -449,16 +449,16 @@ export const LandingPage = () => {
       {/* Feature Detail Modal */}
       <AnimatePresence>
         {selectedFeature && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/98 backdrop-blur-2xl">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 lg:p-6 bg-black/98 backdrop-blur-2xl overflow-hidden">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-              className="relative w-full max-w-6xl bg-secondary border border-white/5 rounded-[40px] overflow-hidden shadow-2xl"
+              className="relative w-full max-w-6xl max-h-[95vh] bg-secondary border border-white/5 rounded-[32px] lg:rounded-[40px] overflow-y-auto no-scrollbar shadow-2xl"
             >
               <div className="flex flex-col lg:flex-row h-full">
-                <div className="lg:w-1/2 h-64 lg:h-auto relative overflow-hidden">
+                <div className="lg:w-1/2 h-64 lg:h-auto relative overflow-hidden shrink-0">
                   <OptimizedImage 
                     src={selectedFeature.img} 
                     alt={selectedFeature.title} 
@@ -468,36 +468,36 @@ export const LandingPage = () => {
                   <div className="absolute inset-0 bg-gradient-to-r from-secondary via-transparent to-transparent hidden lg:block" />
                 </div>
 
-                <div className="lg:w-1/2 p-16 overflow-y-auto no-scrollbar flex flex-col">
-                  <div className="flex justify-between items-start mb-12">
+                <div className="lg:w-1/2 p-8 lg:p-16 flex flex-col">
+                  <div className="flex justify-between items-start mb-8 lg:mb-12">
                     <div className="flex items-center gap-4">
                       <HeroStar color="text-silver" />
-                      <span className="text-silver text-[10px] font-bold tracking-[0.6em] uppercase">{selectedFeature.category}</span>
+                      <span className="text-silver text-[8px] lg:text-[10px] font-bold tracking-[0.4em] uppercase">{selectedFeature.category}</span>
                     </div>
                     <button 
                       onClick={() => setSelectedFeature(null)}
-                      className="p-3 rounded-full border border-white/10 text-secondary hover:bg-emerald hover:text-black transition-all"
+                      className="p-2 lg:p-3 rounded-full border border-white/10 text-secondary hover:bg-emerald hover:text-black transition-all"
                     >
-                      <X size={20} />
+                      <X size={18} className="lg:w-5 lg:h-5" />
                     </button>
                   </div>
 
-                  <h2 className="text-6xl font-serif text-white mb-8">{selectedFeature.title}</h2>
-                  <p className="text-xl text-emerald font-light italic mb-10 leading-relaxed">
+                  <h2 className="text-3xl lg:text-6xl font-serif text-white mb-6 lg:mb-8">{selectedFeature.title}</h2>
+                  <p className="text-lg lg:text-xl text-emerald font-light italic mb-8 lg:mb-10 leading-relaxed">
                     "{selectedFeature.desc}"
                   </p>
                   
-                  <div className="space-y-8 text-secondary font-light leading-relaxed mb-16 text-lg">
+                  <div className="space-y-6 lg:space-y-8 text-secondary font-light leading-relaxed mb-10 lg:mb-16 text-base lg:text-lg opacity-80">
                     {selectedFeature.fullContent}
                   </div>
 
-                  <div className="mt-auto flex flex-col sm:flex-row gap-6">
-                    <Link to="/orders" className="flex-1 text-center py-5 bg-gold text-black font-black uppercase tracking-widest text-[10px] hover:brightness-110 transition-all flex items-center justify-center gap-3">
-                      Begin Reservation <MoveRight size={16} />
+                  <div className="mt-auto flex flex-col sm:flex-row gap-4 lg:gap-6">
+                    <Link to="/orders" className="flex-1 text-center py-4 lg:py-5 bg-gold text-black font-black uppercase tracking-widest text-[9px] lg:text-[10px] hover:brightness-110 transition-all flex items-center justify-center gap-3">
+                      Begin Reservation <MoveRight size={14} className="lg:w-4 lg:h-4" />
                     </Link>
                     <button 
                       onClick={() => setSelectedFeature(null)}
-                      className="px-10 py-5 border border-white/10 text-secondary font-bold uppercase tracking-widest text-[10px] hover:bg-white/5 transition-all"
+                      className="px-8 lg:px-10 py-4 lg:py-5 border border-white/10 text-secondary font-bold uppercase tracking-widest text-[9px] lg:text-[10px] hover:bg-white/5 transition-all"
                     >
                       Return to Hub
                     </button>
@@ -510,8 +510,8 @@ export const LandingPage = () => {
       </AnimatePresence>
 
       {/* Experience Stats */}
-      <section className="py-24 border-t border-white/5">
-        <div className="max-w-7xl mx-auto px-8 grid grid-cols-2 md:grid-cols-4 gap-12 text-center">
+      <section className="py-16 lg:py-24 border-t border-white/5">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8 grid grid-cols-2 md:grid-cols-4 gap-10 lg:gap-12 text-center">
           {[
             { val: "24/7", label: "VIP Concierge" },
             { val: "0.0ms", label: "Gaming Latency" },
@@ -525,8 +525,8 @@ export const LandingPage = () => {
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
             >
-              <h5 className="text-4xl md:text-5xl font-serif text-silver mb-2">{stat.val}</h5>
-              <p className="text-[10px] text-secondary uppercase tracking-[0.3em] font-bold">{stat.label}</p>
+              <h5 className="text-3xl lg:text-5xl font-serif text-silver mb-1 lg:mb-2">{stat.val}</h5>
+              <p className="text-[8px] lg:text-[10px] text-secondary uppercase tracking-[0.2em] lg:tracking-[0.3em] font-bold">{stat.label}</p>
             </motion.div>
           ))}
         </div>

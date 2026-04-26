@@ -12,7 +12,8 @@ import {
   TrashIcon,
   ArrowPathIcon,
   BanknotesIcon,
-  DocumentChartBarIcon
+  DocumentChartBarIcon,
+  Bars3Icon
 } from "@heroicons/react/24/outline";
 import { User } from "firebase/auth";
 import { 
@@ -53,6 +54,7 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'item' | 'staff' | 'order'>('item');
   const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error', visible: boolean }>({ message: '', type: 'success', visible: false });
 
   // Stats calculation
@@ -65,11 +67,9 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
     const activeOrders = orders.filter(o => o.status !== 'served' && o.status !== 'cancelled').length;
     const lowStock = inventory.filter(i => i.stock < 10).length;
 
-    // Revenue by category
     const revenueByCategory: Record<string, number> = {};
     todaysOrders.forEach(order => {
       order.items?.forEach((item: any) => {
-        // Find item in inventory to get category if not in order item
         const invItem = inventory.find(i => i.id === item.id);
         const category = invItem?.category || 'Uncategorized';
         const itemRevenue = Number(item.price || 0) * Number(item.quantity || 0);
@@ -147,37 +147,58 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
     }
   };
 
+  const navItems = [
+    { id: 'dashboard', icon: ChartBarIcon, label: 'Analytics' },
+    { id: 'orders', icon: ArrowPathIcon, label: 'Queue' },
+    { id: 'inventory', icon: Square2StackIcon, label: 'Stock' },
+    { id: 'accounting', icon: BanknotesIcon, label: 'Finance' },
+    { id: 'staff', icon: UserGroupIcon, label: 'Staff', adminOnly: true },
+  ].filter(item => !item.adminOnly || role === 'admin');
+
   if (!role || role === 'guest') {
     return (
-      <div className="h-full flex items-center justify-center bg-primary p-20">
-        <GlassCard className="p-20 text-center space-y-8 max-w-lg">
-          <ExclamationTriangleIcon className="w-20 h-20 text-gold mx-auto animate-pulse" />
-          <h2 className="text-4xl font-serif text-white">Access Restricted</h2>
-          <p className="text-silver text-sm leading-relaxed">System protocols require administrative clearance for this terminal.</p>
+      <div className="h-full flex items-center justify-center bg-primary p-6 lg:p-20">
+        <GlassCard className="p-8 lg:p-20 text-center space-y-6 lg:space-y-8 max-w-lg">
+          <ExclamationTriangleIcon className="w-12 h-12 lg:w-20 lg:h-20 text-gold mx-auto animate-pulse" />
+          <h2 className="text-2xl lg:text-4xl font-serif text-white uppercase tracking-widest">Access Restricted</h2>
+          <p className="text-silver text-xs lg:text-sm leading-relaxed opacity-60">System protocols require administrative clearance for this terminal.</p>
         </GlassCard>
       </div>
     );
   }
 
   return (
-    <div className="flex h-full bg-primary font-sans text-white overflow-hidden">
-      {/* Sidebar */}
-      <aside className="w-80 border-r border-white/[0.03] bg-black/40 p-10 flex flex-col justify-between backdrop-blur-3xl z-50">
-        <div className="space-y-16">
-          <div className="px-4">
-            <p className="text-[10px] uppercase tracking-[0.6em] text-gold mb-10 font-black opacity-60">Operations Hub</p>
-            <nav className="space-y-3">
-              {[
-                { id: 'dashboard', icon: ChartBarIcon, label: 'Analytics' },
-                { id: 'orders', icon: ArrowPathIcon, label: 'Live Orders' },
-                { id: 'inventory', icon: Square2StackIcon, label: 'Inventory' },
-                { id: 'accounting', icon: BanknotesIcon, label: 'Accounting' },
-                { id: 'staff', icon: UserGroupIcon, label: 'Staff Management', adminOnly: true },
-              ].filter(item => !item.adminOnly || role === 'admin').map((item) => (
+    <div className="flex flex-col lg:flex-row h-full bg-primary font-sans text-white overflow-hidden">
+      {/* Mobile Header */}
+      <header className="lg:hidden h-16 flex items-center justify-between px-6 border-b border-white/[0.03] bg-black/40 backdrop-blur-xl shrink-0 z-[60]">
+        <div className="flex items-center gap-3">
+          <SparklesIcon className="w-5 h-5 text-gold" />
+          <span className="text-[10px] font-black uppercase tracking-widest">Terminal</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="text-[9px] text-gold font-bold uppercase tracking-widest">{role.replace('_', ' ')}</span>
+          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="text-silver">
+            <Bars3Icon className="w-6 h-6" />
+          </button>
+        </div>
+      </header>
+
+      {/* Desktop Sidebar / Mobile Drawer */}
+      <aside className={`fixed lg:relative inset-y-0 left-0 w-72 lg:w-80 border-r border-white/[0.03] bg-black/95 lg:bg-black/40 p-8 lg:p-10 flex flex-col justify-between backdrop-blur-3xl z-[100] transition-transform duration-500 lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="space-y-12 lg:space-y-16">
+          <div className="px-2 lg:px-4">
+            <div className="flex justify-between items-center mb-10">
+              <p className="text-[9px] lg:text-[10px] uppercase tracking-[0.4em] lg:tracking-[0.6em] text-gold font-black opacity-60">Operations Hub</p>
+              <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-1 text-silver/40">
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+            <nav className="space-y-2 lg:space-y-3">
+              {navItems.map((item) => (
                 <button 
                   key={item.id}
-                  onClick={() => setView(item.id as any)}
-                  className={`w-full flex items-center gap-5 text-[11px] p-5 rounded-2xl transition-all uppercase tracking-[0.2em] font-black ${view === item.id ? 'bg-gold text-black shadow-2xl shadow-gold/20' : 'text-silver hover:bg-white/5 hover:text-gold'}`}
+                  onClick={() => { setView(item.id as any); setIsSidebarOpen(false); }}
+                  className={`w-full flex items-center gap-4 lg:gap-5 text-[10px] lg:text-[11px] p-4 lg:p-5 rounded-2xl transition-all uppercase tracking-[0.2em] font-black ${view === item.id ? 'bg-gold text-black shadow-2xl shadow-gold/20' : 'text-silver hover:bg-white/5 hover:text-gold'}`}
                 >
                   <item.icon className="w-5 h-5" />
                   <span>{item.label}</span>
@@ -186,89 +207,88 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
             </nav>
           </div>
 
-          <div className="p-8 rounded-[32px] bg-gradient-to-br from-gold/10 to-transparent border border-gold/20">
-            <div className="flex items-center gap-3 mb-4 text-gold">
-              <SparklesIcon className="w-5 h-5 animate-pulse" />
-              <span className="text-[10px] font-black uppercase tracking-widest">Intelligence</span>
+          <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] bg-gradient-to-br from-gold/10 to-transparent border border-gold/20">
+            <div className="flex items-center gap-3 mb-3 lg:mb-4 text-gold">
+              <SparklesIcon className="w-4 h-4 lg:w-5 lg:h-5 animate-pulse" />
+              <span className="text-[8px] lg:text-[10px] font-black uppercase tracking-widest">Intelligence</span>
             </div>
-            <p className="text-[11px] text-silver leading-relaxed font-bold italic">
+            <p className="text-[10px] lg:text-[11px] text-silver leading-relaxed font-bold italic opacity-80">
               {stats.lowStock > 0 ? `Alert: ${stats.lowStock} items are low on stock. Restock recommended.` : "All systems operational. Efficiency at peak levels."}
             </p>
           </div>
         </div>
         
-        <div className="p-6 border-t border-white/5 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-gold/20 flex items-center justify-center text-gold font-bold">
+        <div className="p-4 lg:p-6 border-t border-white/5 flex items-center gap-4">
+          <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-xl bg-gold/20 flex items-center justify-center text-gold font-bold text-sm lg:text-base">
             {user?.email?.[0].toUpperCase()}
           </div>
           <div className="overflow-hidden">
-            <p className="text-[10px] font-black text-white truncate">{user?.email}</p>
-            <p className="text-[8px] uppercase tracking-widest text-gold font-bold">{role.replace('_', ' ')}</p>
+            <p className="text-[9px] lg:text-[10px] font-black text-white truncate">{user?.email}</p>
+            <p className="text-[7px] lg:text-[8px] uppercase tracking-widest text-gold font-bold">{role.replace('_', ' ')}</p>
           </div>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-12 lg:p-20 space-y-16 no-scrollbar">
-        <header className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-10 pb-12 border-b border-white/5">
-          <div className="space-y-4">
-            <h3 className="text-gold text-[11px] uppercase tracking-[0.8em] font-black opacity-60">System Protocol v6.2</h3>
-            <SectionTitle 
-              subtitle="Management Terminal" 
-              title={view === 'dashboard' ? 'Daily Analytics' : view === 'inventory' ? 'Stock Control' : view === 'staff' ? 'Personnel' : view === 'accounting' ? 'Revenue Records' : 'Active Queue'} 
-            />
+      <main className="flex-1 overflow-y-auto p-6 lg:p-12 xl:p-20 space-y-10 lg:space-y-16 no-scrollbar">
+        <header className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-8 pb-8 lg:pb-12 border-b border-white/5">
+          <div className="space-y-3 lg:space-y-4">
+            <h3 className="text-gold text-[9px] lg:text-[11px] uppercase tracking-[0.6em] lg:tracking-[0.8em] font-black opacity-60">System Protocol v6.2</h3>
+            <h2 className="text-3xl lg:text-4xl xl:text-5xl font-serif text-white tracking-tighter uppercase">
+              {view === 'dashboard' ? 'Analytics' : view === 'inventory' ? 'Stock' : view === 'staff' ? 'Personnel' : view === 'accounting' ? 'Revenue' : 'Queue'}
+            </h2>
           </div>
           
-          <div className="flex gap-8">
-            <div className="text-right">
-              <p className="text-[9px] uppercase tracking-widest text-silver mb-1">Today's Revenue</p>
-              <p className="text-3xl font-serif text-gold font-black">₦{stats.totalRevenue.toLocaleString()}</p>
+          <div className="flex gap-6 lg:gap-8 w-full xl:w-auto">
+            <div className="flex-1 xl:text-right">
+              <p className="text-[8px] lg:text-[9px] uppercase tracking-widest text-silver mb-1 opacity-60">Daily Revenue</p>
+              <p className="text-2xl lg:text-3xl font-serif text-gold font-black">₦{stats.totalRevenue.toLocaleString()}</p>
             </div>
-            <div className="text-right border-l border-white/10 pl-8">
-              <p className="text-[9px] uppercase tracking-widest text-silver mb-1">Total Sales</p>
-              <p className="text-3xl font-serif text-white font-black">{stats.totalOrders}</p>
+            <div className="flex-1 xl:text-right border-l border-white/10 pl-6 lg:pl-8">
+              <p className="text-[8px] lg:text-[9px] uppercase tracking-widest text-silver mb-1 opacity-60">Sales Count</p>
+              <p className="text-2xl lg:text-3xl font-serif text-white font-black">{stats.totalOrders}</p>
             </div>
           </div>
         </header>
 
         {view === 'dashboard' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-            <GlassCard className="lg:col-span-2 p-12 relative group">
-              <div className="relative z-10 space-y-10">
-                <div className="flex items-center gap-4 text-gold">
-                  <SparklesIcon className="w-8 h-8" />
-                  <h4 className="text-2xl font-serif uppercase tracking-widest">Performance Insights</h4>
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 lg:gap-10">
+            <GlassCard className="xl:col-span-2 p-8 lg:p-12 relative group overflow-hidden">
+              <div className="relative z-10 space-y-8 lg:space-y-10">
+                <div className="flex items-center gap-3 lg:gap-4 text-gold">
+                  <SparklesIcon className="w-6 h-6 lg:w-8 lg:h-8" />
+                  <h4 className="text-lg lg:text-2xl font-serif uppercase tracking-widest">Performance Insights</h4>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                  <div className="space-y-4">
-                    <p className="text-[10px] uppercase tracking-[0.4em] text-silver font-black">Average Fulfillment</p>
-                    <p className="text-5xl font-serif text-white font-black">14.5<span className="text-xl">min</span></p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 lg:gap-10">
+                  <div className="space-y-3 lg:space-y-4">
+                    <p className="text-[9px] lg:text-[10px] uppercase tracking-[0.4em] text-silver font-black">Avg Fulfillment</p>
+                    <p className="text-4xl lg:text-5xl font-serif text-white font-black">14.5<span className="text-base lg:text-xl">min</span></p>
                     <Badge color="emerald">Optimal</Badge>
                   </div>
-                  <div className="space-y-4">
-                    <p className="text-[10px] uppercase tracking-[0.4em] text-silver font-black">Peak Hour</p>
-                    <p className="text-5xl font-serif text-gold font-black">20:00</p>
-                    <p className="text-[10px] text-silver italic">Based on 7-day trend</p>
+                  <div className="space-y-3 lg:space-y-4">
+                    <p className="text-[9px] lg:text-[10px] uppercase tracking-[0.4em] text-silver font-black">Peak Activity</p>
+                    <p className="text-4xl lg:text-5xl font-serif text-gold font-black">20:00</p>
+                    <p className="text-[8px] lg:text-[10px] text-silver italic opacity-60">Based on 7-day trend</p>
                   </div>
                 </div>
               </div>
             </GlassCard>
 
-            <div className="space-y-10">
-              <GlassCard className="p-8 border-purple-500/20 bg-purple-500/5">
-                <div className="flex items-center gap-4 text-purple-400 mb-6">
-                  <ExclamationTriangleIcon className="w-6 h-6 animate-pulse" />
-                  <h4 className="text-sm font-black uppercase tracking-widest">Critical Alerts</h4>
+            <div className="space-y-8 lg:space-y-10">
+              <GlassCard className="p-6 lg:p-8 border-purple-500/20 bg-purple-500/5">
+                <div className="flex items-center gap-3 lg:gap-4 text-purple-400 mb-5 lg:mb-6">
+                  <ExclamationTriangleIcon className="w-5 h-5 lg:w-6 lg:h-6 animate-pulse" />
+                  <h4 className="text-[10px] lg:text-sm font-black uppercase tracking-widest">Critical Alerts</h4>
                 </div>
-                <div className="space-y-4">
+                <div className="space-y-3 lg:space-y-4">
                   {stats.lowStock > 0 && (
-                    <div className="p-4 bg-black/40 rounded-2xl border border-white/5 flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-silver">Low Stock Items</span>
+                    <div className="p-3 lg:p-4 bg-black/40 rounded-xl lg:rounded-2xl border border-white/5 flex items-center justify-between">
+                      <span className="text-[9px] lg:text-[10px] font-bold text-silver">Low Stock Items</span>
                       <Badge color="red">{stats.lowStock}</Badge>
                     </div>
                   )}
-                  <div className="p-4 bg-black/40 rounded-2xl border border-white/5 flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-silver">Active Queue</span>
+                  <div className="p-3 lg:p-4 bg-black/40 rounded-xl lg:rounded-2xl border border-white/5 flex items-center justify-between">
+                    <span className="text-[9px] lg:text-[10px] font-bold text-silver">Active Queue</span>
                     <Badge color="gold">{stats.activeOrders}</Badge>
                   </div>
                 </div>
@@ -278,12 +298,12 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
         )}
 
         {view === 'accounting' && (
-          <div className="space-y-12">
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8">
+          <div className="space-y-10 lg:space-y-12">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-8">
               {Object.entries(stats.revenueByCategory).map(([category, revenue]) => (
-                <GlassCard key={category} className="p-8 space-y-4 border-white/5 hover:border-gold/20 transition-all">
-                  <p className="text-[10px] uppercase tracking-[0.3em] text-silver font-black">{category}</p>
-                  <p className="text-2xl font-serif text-white font-black">₦{revenue.toLocaleString()}</p>
+                <GlassCard key={category} className="p-5 lg:p-8 space-y-3 lg:space-y-4 border-white/5 hover:border-gold/20 transition-all">
+                  <p className="text-[8px] lg:text-[10px] uppercase tracking-[0.2em] text-silver font-black truncate">{category}</p>
+                  <p className="text-xl lg:text-2xl font-serif text-white font-black">₦{revenue.toLocaleString()}</p>
                   <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-gold" 
@@ -294,196 +314,152 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
               ))}
             </div>
 
-            <div className="space-y-8">
-              <div className="flex justify-between items-center">
+            <div className="space-y-6 lg:space-y-8">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="space-y-1">
-                  <h4 className="text-xl font-serif uppercase tracking-widest text-gold">Financial Ledger</h4>
-                  <p className="text-[10px] text-silver font-black uppercase opacity-60">System Synchronized Records</p>
+                  <h4 className="text-lg lg:text-xl font-serif uppercase tracking-widest text-gold">Financial Ledger</h4>
+                  <p className="text-[8px] lg:text-[10px] text-silver font-black uppercase opacity-60">Synchronized Records</p>
                 </div>
-                <div className="flex gap-4">
-                  <GoldButton className="py-3 px-6 text-[9px]">Export Ledger</GoldButton>
-                </div>
+                <GoldButton className="py-2.5 px-5 text-[8px] lg:text-[9px] w-full sm:w-auto">Export Ledger</GoldButton>
               </div>
 
-              <LuxuryTable headers={['Timestamp', 'Reference', 'Staff Attribution', 'Itemization', 'Settlement']}>
-                {orders.map((order) => (
-                  <tr key={order.id} className="group hover:bg-white/[0.02] transition-colors">
-                    <td className="px-8 py-6 text-[10px] text-silver font-mono">
-                      {order.createdAt?.toDate().toLocaleString() || 'Pending...'}
-                    </td>
-                    <td className="px-8 py-6">
-                      <p className="text-sm font-bold text-white uppercase tracking-tighter">{order.id.slice(-8)}</p>
-                      <p className="text-[9px] text-gold tracking-widest font-black opacity-60">{order.table}</p>
-                    </td>
-                    <td className="px-8 py-6">
-                      <div className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                        <p className="text-[10px] text-white font-black uppercase tracking-widest">{order.staffAttribution?.split('@')[0] || 'GUEST-AUTO'}</p>
-                      </div>
-                      <p className="text-[8px] text-silver italic">{order.staffEmail || 'Internal Transmission'}</p>
-                    </td>
-                    <td className="px-8 py-6">
-                      <div className="max-w-[200px] space-y-1">
-                        {order.items?.map((item: any, idx: number) => (
-                          <p key={idx} className="text-[10px] text-silver truncate">
-                            <span className="text-white font-bold">{item.quantity}x</span> {item.name}
-                          </p>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-8 py-6">
-                      <p className="text-lg font-serif text-gold font-black">₦{order.total?.toLocaleString()}</p>
-                      <Badge color={order.status === 'served' ? 'emerald' : 'gold'}>{order.status}</Badge>
-                    </td>
-                  </tr>
-                ))}
-              </LuxuryTable>
+              <div className="overflow-x-auto -mx-6 px-6 lg:mx-0 lg:px-0 no-scrollbar">
+                <div className="min-w-[800px]">
+                  <LuxuryTable headers={['Time', 'Ref', 'Staff', 'Items', 'Amount']}>
+                    {orders.map((order) => (
+                      <tr key={order.id} className="group hover:bg-white/[0.02] transition-colors border-b border-white/[0.02]">
+                        <td className="px-6 lg:px-8 py-5 text-[9px] lg:text-[10px] text-silver font-mono">
+                          {order.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || '...'}
+                        </td>
+                        <td className="px-6 lg:px-8 py-5">
+                          <p className="text-xs lg:text-sm font-bold text-white uppercase tracking-tighter">{order.id.slice(-8)}</p>
+                          <p className="text-[8px] lg:text-[9px] text-gold tracking-widest font-black opacity-40">{order.table}</p>
+                        </td>
+                        <td className="px-6 lg:px-8 py-5">
+                          <div className="flex items-center gap-2">
+                            <div className="w-1 h-1 rounded-full bg-emerald" />
+                            <p className="text-[9px] lg:text-[10px] text-white font-black uppercase tracking-widest truncate max-w-[80px]">{order.staffAttribution?.split('@')[0] || 'AUTO'}</p>
+                          </div>
+                        </td>
+                        <td className="px-6 lg:px-8 py-5">
+                          <p className="text-[9px] lg:text-[10px] text-silver">{order.items?.length || 0} units</p>
+                        </td>
+                        <td className="px-6 lg:px-8 py-5">
+                          <p className="text-base lg:text-lg font-serif text-gold font-black">₦{order.total?.toLocaleString()}</p>
+                          <Badge color={order.status === 'served' ? 'emerald' : 'gold'}>{order.status}</Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </LuxuryTable>
+                </div>
+              </div>
             </div>
           </div>
         )}
 
         {view === 'inventory' && (
-          <div className="space-y-10">
-            <div className="flex justify-between items-center">
-              <TabSystem 
-                tabs={[
-                  { id: 'all', label: 'All Items' },
-                  { id: 'bar', label: 'Bar' },
-                  { id: 'kitchen', label: 'Kitchen' },
-                  { id: 'hotel', label: 'Hotel' }
-                ]} 
-                activeTab="all" 
-                onChange={() => {}} 
-              />
-              <GoldButton onClick={() => { setModalType('item'); setSelectedItem({}); setIsModalOpen(true); }}>
-                <div className="flex items-center gap-2">
+          <div className="space-y-8 lg:space-y-10">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+              <div className="overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0 w-full sm:w-auto no-scrollbar">
+                <TabSystem 
+                  tabs={[
+                    { id: 'all', label: 'All' },
+                    { id: 'bar', label: 'Bar' },
+                    { id: 'kitchen', label: 'Kitchen' }
+                  ]} 
+                  activeTab="all" 
+                  onChange={() => {}} 
+                />
+              </div>
+              <GoldButton onClick={() => { setModalType('item'); setSelectedItem({}); setIsModalOpen(true); }} className="w-full sm:w-auto">
+                <div className="flex items-center justify-center gap-2">
                   <PlusIcon className="w-4 h-4" />
-                  <span>Add Resource</span>
+                  <span className="text-[9px]">Add Resource</span>
                 </div>
               </GoldButton>
             </div>
 
-            <LuxuryTable headers={['Item Name', 'Category', 'Price', 'Stock', 'Actions']}>
-              {inventory.map((item) => (
-                <tr key={item.id} className="group hover:bg-white/[0.02] transition-colors">
-                  <td className="px-8 py-6">
-                    <div>
-                      <p className="text-sm font-bold text-white">{item.name}</p>
-                      <p className="text-[9px] uppercase tracking-widest text-silver">{item.type}</p>
-                    </div>
-                  </td>
-                  <td className="px-8 py-6">
-                    <Badge color="silver">{item.category}</Badge>
-                  </td>
-                  <td className="px-8 py-6 font-serif text-white">₦{item.price.toLocaleString()}</td>
-                  <td className="px-8 py-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-20 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full rounded-full ${item.stock < 10 ? 'bg-red-500' : item.stock < 20 ? 'bg-gold' : 'bg-emerald'}`}
-                          style={{ width: `${Math.min(item.stock, 100)}%` }}
-                        />
-                      </div>
-                      <span className={`text-[10px] font-black ${item.stock < 10 ? 'text-red-400' : 'text-silver'}`}>{item.stock}</span>
-                    </div>
-                  </td>
-                  <td className="px-8 py-6">
-                    <div className="flex gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => { setSelectedItem(item); setModalType('item'); setIsModalOpen(true); }} className="text-silver hover:text-gold transition-colors"><PencilSquareIcon className="w-5 h-5" /></button>
-                      <button className="text-silver hover:text-red-400 transition-colors"><TrashIcon className="w-5 h-5" /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </LuxuryTable>
-          </div>
-        )}
-
-        {view === 'staff' && (
-          <div className="space-y-10">
-            <div className="flex justify-between items-center">
-              <h4 className="text-xl font-serif uppercase tracking-widest text-gold">Personnel Registry</h4>
-              <GoldButton onClick={() => { setModalType('staff'); setSelectedItem({}); setIsModalOpen(true); }}>
-                <div className="flex items-center gap-2">
-                  <UserGroupIcon className="w-4 h-4" />
-                  <span>Onboard Staff</span>
-                </div>
-              </GoldButton>
+            <div className="overflow-x-auto -mx-6 px-6 lg:mx-0 lg:px-0 no-scrollbar">
+              <div className="min-w-[700px]">
+                <LuxuryTable headers={['Item', 'Cat', 'Price', 'Stock', 'Opt']}>
+                  {inventory.map((item) => (
+                    <tr key={item.id} className="group hover:bg-white/[0.02] transition-colors border-b border-white/[0.02]">
+                      <td className="px-6 lg:px-8 py-5">
+                        <p className="text-sm font-bold text-white leading-tight">{item.name}</p>
+                        <p className="text-[8px] uppercase tracking-widest text-silver opacity-40">{item.type}</p>
+                      </td>
+                      <td className="px-6 lg:px-8 py-5">
+                        <Badge color="silver">{item.category}</Badge>
+                      </td>
+                      <td className="px-6 lg:px-8 py-5 font-serif text-white">₦{item.price.toLocaleString()}</td>
+                      <td className="px-6 lg:px-8 py-5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-16 lg:w-20 h-1 bg-white/5 rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full ${item.stock < 10 ? 'bg-red-500' : 'bg-emerald'}`}
+                              style={{ width: `${Math.min(item.stock, 100)}%` }}
+                            />
+                          </div>
+                          <span className={`text-[9px] font-black ${item.stock < 10 ? 'text-red-400' : 'text-silver'}`}>{item.stock}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 lg:px-8 py-5">
+                        <div className="flex gap-4">
+                          <button onClick={() => { setSelectedItem(item); setModalType('item'); setIsModalOpen(true); }} className="text-silver/40 hover:text-gold transition-colors"><PencilSquareIcon className="w-4 h-4" /></button>
+                          <button className="text-silver/20 hover:text-red-400 transition-colors"><TrashIcon className="w-4 h-4" /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </LuxuryTable>
+              </div>
             </div>
-
-            <LuxuryTable headers={['Employee', 'Role', 'Status', 'Actions']}>
-              {staff.map((member) => (
-                <tr key={member.id} className="group hover:bg-white/[0.02] transition-colors">
-                  <td className="px-8 py-6">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center font-bold text-silver">
-                        {member.email[0].toUpperCase()}
-                      </div>
-                      <span className="text-sm font-bold text-white">{member.email}</span>
-                    </div>
-                  </td>
-                  <td className="px-8 py-6">
-                    <Badge color={member.role === 'admin' ? 'gold' : 'purple'}>{member.role.replace('_', ' ')}</Badge>
-                  </td>
-                  <td className="px-8 py-6">
-                    <div className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                      <span className="text-[10px] font-black text-silver uppercase tracking-widest">Active</span>
-                    </div>
-                  </td>
-                  <td className="px-8 py-6 text-silver">
-                    <button className="hover:text-red-400 transition-colors"><TrashIcon className="w-5 h-5" /></button>
-                  </td>
-                </tr>
-              ))}
-            </LuxuryTable>
           </div>
         )}
 
         {view === 'orders' && (
-          <div className="space-y-8">
+          <div className="space-y-6 lg:space-y-8">
             <AnimatePresence mode="popLayout">
-              {orders.map((order, i) => (
+              {orders.map((order) => (
                 <motion.div 
                   layout
                   key={order.id}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="p-8 rounded-[32px] bg-secondary/20 border border-white/5 hover:border-gold/30 transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-8 group"
+                  className="p-5 lg:p-8 rounded-[24px] lg:rounded-[32px] bg-secondary/20 border border-white/5 hover:border-gold/30 transition-all flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 group"
                 >
-                  <div className="flex items-center gap-8">
-                    <div className="w-20 h-20 rounded-[24px] bg-black border border-white/5 flex flex-col items-center justify-center">
-                      <p className="text-[8px] uppercase tracking-widest text-gold font-black mb-1">Room</p>
-                      <p className="text-3xl font-serif text-white font-black">{order.table?.split('-').pop()}</p>
+                  <div className="flex items-center gap-5 lg:gap-8">
+                    <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-[20px] lg:rounded-[24px] bg-black border border-white/5 flex flex-col items-center justify-center shrink-0">
+                      <p className="text-[7px] lg:text-[8px] uppercase tracking-widest text-gold font-black mb-0.5">ROOM</p>
+                      <p className="text-2xl lg:text-3xl font-serif text-white font-black leading-none">{order.table?.split('-').pop()}</p>
                     </div>
                     <div>
-                      <div className="flex items-center gap-3 mb-2">
-                        <h5 className="text-xl font-bold text-white">{order.userName || "Guest"}</h5>
+                      <div className="flex flex-wrap items-center gap-2 mb-1.5 lg:mb-2">
+                        <h5 className="text-base lg:text-xl font-bold text-white leading-tight">{order.userName || "Guest"}</h5>
                         <Badge color={order.status === 'served' ? 'emerald' : order.status === 'cancelled' ? 'red' : 'gold'}>
                           {order.status.replace('-', ' ')}
                         </Badge>
                       </div>
-                      <p className="text-[10px] uppercase tracking-[0.2em] text-silver font-bold">
-                        {order.items?.length || 0} ITEMS • TOTAL: ₦{order.total?.toLocaleString()}
+                      <p className="text-[8px] lg:text-[10px] uppercase tracking-[0.1em] lg:tracking-[0.2em] text-silver font-bold opacity-60">
+                        {order.items?.length || 0} ITEMS • ₦{order.total?.toLocaleString()}
                       </p>
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-4 w-full md:w-auto">
+                  <div className="flex items-center gap-3 w-full sm:w-auto mt-2 sm:mt-0">
                     <select 
                       value={order.status}
                       onChange={(e) => updateDoc(doc(db, "orders", order.id), { status: e.target.value, updatedAt: serverTimestamp() })}
-                      className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-[10px] uppercase tracking-widest font-black text-silver focus:outline-none focus:border-gold/30"
+                      className="flex-1 sm:flex-none bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 lg:py-3 text-[9px] lg:text-[10px] uppercase tracking-widest font-black text-silver focus:outline-none focus:border-gold/30"
                     >
                       <option value="new">New</option>
                       <option value="preparing">Preparing</option>
                       <option value="ready">Ready</option>
                       <option value="served">Served</option>
-                      <option value="cancelled">Cancelled</option>
                     </select>
                     <motion.button 
                       whileHover={{ scale: 1.05 }}
-                      className="p-3 rounded-xl bg-white/5 border border-white/10 text-silver hover:text-gold"
+                      className="p-2.5 lg:p-3 rounded-xl bg-white/5 border border-white/10 text-silver hover:text-gold shrink-0"
                     >
                       <ChevronRightIcon className="w-5 h-5" />
                     </motion.button>
@@ -495,72 +471,87 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
         )}
       </main>
 
+      {/* Sidebar Overlay for Mobile */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsSidebarOpen(false)}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] lg:hidden"
+          />
+        )}
+      </AnimatePresence>
+
       {/* Modals */}
       <GlassModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
-        title={modalType === 'item' ? 'Resource Configuration' : 'Personnel Onboarding'}
+        title={modalType === 'item' ? 'Configuration' : 'Personnel'}
       >
-        {modalType === 'item' ? (
-          <form onSubmit={handleUpdateItem} className="space-y-8">
-            <div className="grid grid-cols-2 gap-6">
-              <SilverInput 
-                placeholder="Item Name" 
-                value={selectedItem?.name || ''} 
-                onChange={(e: any) => setSelectedItem({ ...selectedItem, name: e.target.value })} 
+        <div className="max-h-[60vh] overflow-y-auto no-scrollbar -mx-2 px-2">
+          {modalType === 'item' ? (
+            <form onSubmit={handleUpdateItem} className="space-y-6 lg:space-y-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
+                <SilverInput 
+                  placeholder="Item Name" 
+                  value={selectedItem?.name || ''} 
+                  onChange={(e: any) => setSelectedItem({ ...selectedItem, name: e.target.value })} 
+                />
+                <SilverInput 
+                  placeholder="Price" 
+                  type="number"
+                  value={selectedItem?.price || ''} 
+                  onChange={(e: any) => setSelectedItem({ ...selectedItem, price: Number(e.target.value) })} 
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
+                <select 
+                  value={selectedItem?.type || 'bar'}
+                  onChange={(e) => setSelectedItem({ ...selectedItem, type: e.target.value })}
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl p-3.5 text-sm text-white focus:outline-none focus:border-gold/30"
+                >
+                  <option value="bar">Bar</option>
+                  <option value="kitchen">Kitchen</option>
+                  <option value="hotel">Hotel</option>
+                </select>
+                <SilverInput 
+                  placeholder="Stock" 
+                  type="number"
+                  value={selectedItem?.stock || ''} 
+                  onChange={(e: any) => setSelectedItem({ ...selectedItem, stock: Number(e.target.value) })} 
+                />
+              </div>
+              <textarea 
+                placeholder="Description" 
+                value={selectedItem?.description || ''} 
+                onChange={(e) => setSelectedItem({ ...selectedItem, description: e.target.value })}
+                className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm text-white h-24 focus:outline-none focus:border-gold/30"
               />
+              <GoldButton type="submit" className="w-full py-4 lg:py-5 text-[10px] lg:text-sm">Synchronize Protocol</GoldButton>
+            </form>
+          ) : (
+            <form onSubmit={handleAddStaff} className="space-y-6 lg:space-y-8">
               <SilverInput 
-                placeholder="Price" 
-                type="number"
-                value={selectedItem?.price || ''} 
-                onChange={(e: any) => setSelectedItem({ ...selectedItem, price: Number(e.target.value) })} 
+                placeholder="Employee Email" 
+                value={selectedItem?.email || ''} 
+                onChange={(e: any) => setSelectedItem({ ...selectedItem, email: e.target.value })} 
               />
-            </div>
-            <div className="grid grid-cols-2 gap-6">
               <select 
-                value={selectedItem?.type || 'bar'}
-                onChange={(e) => setSelectedItem({ ...selectedItem, type: e.target.value })}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white focus:outline-none focus:border-gold/30"
+                value={selectedItem?.role || 'staff_waiter'}
+                onChange={(e) => setSelectedItem({ ...selectedItem, role: e.target.value })}
+                className="w-full bg-white/5 border border-white/10 rounded-2xl p-3.5 text-sm text-white focus:outline-none focus:border-gold/30"
               >
-                <option value="bar">Bar</option>
-                <option value="kitchen">Kitchen</option>
-                <option value="hotel">Hotel</option>
+                <option value="staff_waiter">Staff Waiter</option>
+                <option value="staff_kitchen">Staff Kitchen</option>
+                <option value="staff_bar">Staff Bar</option>
+                <option value="admin">Admin</option>
               </select>
-              <SilverInput 
-                placeholder="Initial Stock" 
-                type="number"
-                value={selectedItem?.stock || ''} 
-                onChange={(e: any) => setSelectedItem({ ...selectedItem, stock: Number(e.target.value) })} 
-              />
-            </div>
-            <textarea 
-              placeholder="Description" 
-              value={selectedItem?.description || ''} 
-              onChange={(e) => setSelectedItem({ ...selectedItem, description: e.target.value })}
-              className="w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-sm text-white h-32 focus:outline-none focus:border-gold/30"
-            />
-            <GoldButton type="submit" className="w-full py-5 text-sm">Synchronize Protocol</GoldButton>
-          </form>
-        ) : (
-          <form onSubmit={handleAddStaff} className="space-y-8">
-            <SilverInput 
-              placeholder="Employee Email" 
-              value={selectedItem?.email || ''} 
-              onChange={(e: any) => setSelectedItem({ ...selectedItem, email: e.target.value })} 
-            />
-            <select 
-              value={selectedItem?.role || 'staff_waiter'}
-              onChange={(e) => setSelectedItem({ ...selectedItem, role: e.target.value })}
-              className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white focus:outline-none focus:border-gold/30"
-            >
-              <option value="staff_waiter">Staff Waiter</option>
-              <option value="staff_kitchen">Staff Kitchen</option>
-              <option value="staff_bar">Staff Bar</option>
-              <option value="admin">Admin</option>
-            </select>
-            <GoldButton type="submit" className="w-full py-5 text-sm">Onboard Employee</GoldButton>
-          </form>
-        )}
+              <GoldButton type="submit" className="w-full py-4 lg:py-5 text-[10px] lg:text-sm">Onboard Employee</GoldButton>
+            </form>
+          )}
+        </div>
       </GlassModal>
 
       <Toast 

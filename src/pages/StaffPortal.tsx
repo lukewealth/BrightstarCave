@@ -10,7 +10,8 @@ import {
   BanknotesIcon,
   Bars3Icon,
   XMarkIcon,
-  PrinterIcon
+  PrinterIcon,
+  ClockIcon
 } from "@heroicons/react/24/outline";
 import { User } from "firebase/auth";
 import { 
@@ -27,7 +28,6 @@ import {
 import { db, getUserRole, UserRole } from "../lib/firebase";
 import { 
   GlassCard, 
-  GoldButton, 
   Badge, 
   SectionTitle,
   LuxuryTable, 
@@ -59,7 +59,6 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
     const totalRevenue = paidOrders.reduce((acc, curr) => acc + (curr.total || 0), 0);
     const activeOrders = orders.filter(o => o.status === 'pending-payment').length;
     
-    // Filter inventory based on department
     const relevantInventory = department === 'All' ? inventory : inventory.filter(i => i.category === department);
     const lowStock = relevantInventory.filter(i => i.stock < 10).length;
 
@@ -71,8 +70,8 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
       const insights = [
         `Your ${department} throughput is at peak levels.`,
         `Active transmissions detected: ${stats.activeOrders}. Monitor settlement.`,
-        `Personal daily revenue threshold crossed: ₦${stats.totalRevenue.toLocaleString()}`,
-        "Gemini Suggestion: Verify settlement for Room IDs immediately."
+        `Personal daily revenue: ₦${stats.totalRevenue.toLocaleString()}`,
+        "Gemini Suggestion: Verify settlement for high-tier orders immediately."
       ];
       setAiInsights(insights[Math.floor(Math.random() * insights.length)]);
     } else {
@@ -89,7 +88,6 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
   useEffect(() => {
     if (!role || role === 'guest') return;
 
-    // Load personal orders
     const qOrders = query(
       collection(db, "orders"), 
       where("staffId", "==", user?.uid),
@@ -186,7 +184,6 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
 
   return (
     <div className="flex flex-col lg:flex-row h-full bg-primary font-sans text-white overflow-hidden">
-      {/* Sidebar */}
       <aside className={`fixed lg:relative inset-y-0 left-0 w-72 lg:w-80 border-r border-white/[0.03] bg-black/40 p-8 lg:p-10 flex flex-col justify-between backdrop-blur-3xl z-[100] transition-transform duration-500 lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="space-y-12">
           <div className="px-2">
@@ -237,7 +234,7 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
               <p className="text-2xl font-serif text-gold font-black">₦{stats.totalRevenue.toLocaleString()}</p>
             </div>
             <div className="xl:text-right border-l border-white/10 pl-6">
-              <p className="text-[8px] uppercase tracking-widest text-silver mb-1 opacity-60">Active Transmissions</p>
+              <p className="text-[8px] uppercase tracking-widest text-silver mb-1 opacity-60">Queue Transmissions</p>
               <p className="text-2xl font-serif text-white font-black">{stats.activeOrders}</p>
             </div>
           </div>
@@ -263,10 +260,7 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
                      <ClockIcon className="w-3 h-3 text-gold animate-spin-slow" />
                      <span className="text-[8px] text-gold font-black uppercase">Pending Payment</span>
                    </div>
-                   <button 
-                     onClick={() => window.location.href = `/orders`} 
-                     className="p-3 bg-white/5 rounded-2xl text-gold hover:bg-gold hover:text-black transition-all"
-                   >
+                   <button onClick={() => window.location.href = `/orders`} className="p-3 bg-white/5 rounded-2xl text-gold hover:bg-gold hover:text-black transition-all">
                      <ChevronRightIcon className="w-5 h-5" />
                    </button>
                 </div>
@@ -289,9 +283,7 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
                 <tr key={order.id} className="group hover:bg-white/[0.02] border-b border-white/[0.02]">
                   <td className="px-6 py-5 text-[9px] text-silver font-mono">{order.formattedTime}</td>
                   <td className="px-6 py-5 text-xs text-white uppercase">{order.id.slice(-8)}</td>
-                  <td className="px-6 py-5">
-                    <Badge color="gold">{order.table}</Badge>
-                  </td>
+                  <td className="px-6 py-5"><Badge color="gold">{order.table}</Badge></td>
                   <td className="px-6 py-5 font-serif text-gold font-black">₦{order.total?.toLocaleString()}</td>
                   <td className="px-6 py-5 text-right">
                     <button onClick={() => handlePrintReceipt(order)} className="p-2.5 bg-emerald/10 text-emerald hover:bg-emerald hover:text-black rounded-xl transition-all">

@@ -2,7 +2,9 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 import { 
-  getFirestore, 
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   doc, 
   getDoc, 
   setDoc, 
@@ -31,7 +33,13 @@ const dbId = (!rawDbId || rawDbId.includes('ai-studio-3544ee')) ? '(default)' : 
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app, dbId);
+
+// Optimized Firestore Initialization with multi-tab persistence
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager()
+  })
+}, dbId);
 
 export const analytics = isSupported().then(yes => yes ? getAnalytics(app) : null);
 export const googleProvider = new GoogleAuthProvider();

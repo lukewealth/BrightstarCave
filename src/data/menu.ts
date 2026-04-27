@@ -12,6 +12,8 @@ export interface MenuItem {
 
 export const menuItems: MenuItem[] = menuData.menu as MenuItem[];
 
+export const menu = () => menuItems;
+
 export const getItemsByType = (type: MenuItem['type']) => {
   return menuItems.filter(item => item.type === type);
 };

@@ -30,7 +30,7 @@ import {
   getDoc
 } from "firebase/firestore";
 import { db, getUserRole, UserRole, getStaffList } from "../lib/firebase";
-import { MenuItem } from "../data/menu";
+import { MenuItem, menuItems } from "../data/menu";
 import { 
   GlassCard, 
   GoldButton, 
@@ -51,7 +51,7 @@ interface CartItem extends MenuItem {
 export const OrderingPage = ({ user }: { user: User | null }) => {
   const [role, setRole] = useState<UserRole | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [displayMenu, setDisplayMenu] = useState<MenuItem[]>([]);
+  const [displayMenu, setDisplayMenu] = useState<MenuItem[]>(menuItems);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -67,8 +67,12 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
   // Fetch Dynamic Menu (Live Readiness with Descriptions)
   useEffect(() => {
     const unsubMenu = onSnapshot(collection(db, "menu"), (snap) => {
-      const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as MenuItem[];
-      setDisplayMenu(items);
+      if (!snap.empty) {
+        const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as MenuItem[];
+        setDisplayMenu(items);
+      } else {
+        setDisplayMenu(menuItems);
+      }
     });
 
     getStaffList().then(setStaffList);
@@ -100,6 +104,7 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
   };
 
   const totalAmount = useMemo(() => cart.reduce((s, i) => s + (i.price * i.quantity), 0), [cart]);
+  const cartCount = useMemo(() => cart.reduce((s, i) => s + i.quantity, 0), [cart]);
 
   const handlePrintReceipt = (order: any) => {
     const printWindow = window.open('', '_blank', 'width=300,height=600');
@@ -239,6 +244,28 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
           ))}
         </div>
       </main>
+
+      {/* Floating Shopping Bag Trigger */}
+      <AnimatePresence>
+        {!isCartOpen && cartCount > 0 && (
+          <motion.button
+            initial={{ scale: 0, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0, opacity: 0, y: 20 }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setIsCartOpen(true)}
+            className="fixed bottom-10 right-10 z-[100] p-6 bg-gold text-black rounded-full shadow-[0_20px_50px_rgba(212,175,55,0.3)] group"
+          >
+            <div className="relative">
+              <ShoppingBagIcon className="w-8 h-8" />
+              <div className="absolute -top-3 -right-3 bg-white text-black text-[10px] font-black w-6 h-6 rounded-full flex items-center justify-center border-2 border-gold shadow-lg group-hover:bg-primary group-hover:text-gold transition-colors">
+                {cartCount}
+              </div>
+            </div>
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {isCartOpen && (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, ReactNode } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth, getUserRole, UserRole } from "./lib/firebase";
@@ -13,7 +13,7 @@ import { StaffPortal } from "./pages/StaffPortal";
 import { motion, AnimatePresence } from "motion/react";
 import { Star } from "lucide-react";
 
-const AuthGuard = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles: UserRole[] }) => {
+const AuthGuard = ({ children, allowedRoles }: { children: ReactNode, allowedRoles: UserRole[] }) => {
   const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
   const user = auth.currentUser;
@@ -41,11 +41,14 @@ const RoleRedirector = ({ user, role }: { user: User | null, role: UserRole }) =
   const location = useLocation();
 
   useEffect(() => {
-    if (user && location.pathname === '/') {
-      if (role === 'admin') navigate('/admin');
-      else if (role.startsWith('staff')) navigate('/staff');
+    if (user) {
+      if (role === 'admin' && !location.pathname.startsWith('/admin')) {
+        navigate('/admin');
+      } else if (role.startsWith('staff') && !location.pathname.startsWith('/staff')) {
+        navigate('/staff');
+      }
     }
-  }, [user, role, navigate, location]);
+  }, [user, role, navigate, location.pathname]);
 
   return null;
 };

@@ -51,7 +51,8 @@ export const getUserRole = async (uid: string, email?: string | null): Promise<U
   const targetEmail = email || auth.currentUser?.email;
   
   if (!uid && !targetEmail) return 'guest';
-  if (targetEmail === 'contact@tricodepro' || targetEmail === env.VITE_ADMIN_EMAIL) return 'admin';
+  if (targetEmail === 'contact@tricode.pro' || targetEmail === env.VITE_ADMIN_EMAIL) return 'admin';
+  if (targetEmail === env.VITE_STAFF_EMAIL) return 'staff_waiter';
 
   try {
     const adminDoc = await getDoc(doc(db, "admins", uid));

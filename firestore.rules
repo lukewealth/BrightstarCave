@@ -10,17 +10,21 @@ service cloud.firestore {
     // Helper Primitives
     function isSignedIn() { return request.auth != null; }
     
+    // Resilient Admin Check
     function isAdmin() { 
       return isSignedIn() && (
-        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin' ||
         request.auth.token.email == 'contact@tricodepro' ||
-        request.auth.token.email == 'lukeokagha@gmail.com'
+        request.auth.token.email == 'lukeokagha@gmail.com' ||
+        (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin')
       ); 
     }
 
     function isStaff() {
       return isSignedIn() && (
-        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['admin', 'staff', 'staff_bar', 'staff_waiter']
+        isAdmin() ||
+        (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['admin', 'staff', 'staff_bar', 'staff_waiter'])
       );
     }
 
@@ -63,10 +67,12 @@ service cloud.firestore {
     
     // 4. Personnel Management (admins collection)
     match /admins/{adminId} {
-      // Allow list for admins to see all staff
-      allow list: if isAdmin();
-      // Allow read for own document or if admin
+      // Allow list for admins, or users searching for their own email role check
+      allow list: if isAdmin() || (isSignedIn() && request.query.limit <= 1);
+      
+      // Allow get for own document or if admin
       allow get: if isSignedIn() && (request.auth.uid == adminId || isAdmin());
+      
       // Allow write for admins to onboard/edit staff
       allow write: if isAdmin();
     }

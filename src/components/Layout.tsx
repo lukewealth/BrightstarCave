@@ -16,12 +16,14 @@ import {
   ShieldCheckIcon,
   KeyIcon,
   BoltIcon,
-  ShoppingBagIcon
+  ShoppingBagIcon,
+  TrashIcon
 } from "@heroicons/react/24/outline";
 import { User, signOut } from "firebase/auth";
 import { auth, UserRole } from "../lib/firebase";
 import { LoginPopup } from "./LoginPopup";
-import { Badge, OptimizedImage, Toast, GoldButton } from "./design-system/Primitive";
+import { Badge, OptimizedImage, Toast, GoldButton, GlassCard } from "./design-system/Primitive";
+import { useCart } from "../lib/cart-context";
 
 export const Layout = ({ 
   children, 
@@ -36,11 +38,13 @@ export const Layout = ({
   theme: string,
   toggleTheme: () => void
 }) => {
+  const { cart, totalAmount, cartCount, updateQuantity, removeFromCart } = useCart();
   const location = useLocation();
   const navigate = useNavigate();
   const isAdminView = location.pathname.startsWith("/admin") || location.pathname.startsWith("/staff");
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMiniCartOpen, setIsMiniCartOpen] = useState(false);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error', visible: boolean }>({ message: '', type: 'success', visible: false });
 
   // Close mobile menu on route change
@@ -158,7 +162,11 @@ export const Layout = ({
           </motion.button>
           
           {!user ? (
-            <motion.button whileHover={{ scale: 1.05 }} onClick={() => setIsLoginOpen(true)} className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-silver bg-white/5 px-5 py-2.5 rounded-xl border border-white/10 transition-all">
+            <motion.button 
+              whileHover={{ scale: 1.05 }} 
+              onClick={() => setIsLoginOpen(true)} 
+              className="hidden lg:flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-silver bg-white/5 px-5 py-2.5 rounded-xl border border-white/10 transition-all hover:border-gold/40 hover:text-gold"
+            >
               <KeyIcon className="w-4 h-4" /> Portal
             </motion.button>
           ) : (
@@ -175,24 +183,75 @@ export const Layout = ({
         </div>
       </header>
 
-      {/* Global Floating Shopping Icon (Chatbot Style) */}
+      {/* Global Floating Shopping Icon (Chatbot Style Mini-Cart) */}
       <AnimatePresence>
         {!isAdminView && (
-          <motion.button
-            initial={{ scale: 0, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => navigate('/orders')}
-            className="fixed bottom-10 right-10 z-[100] p-6 bg-gold text-black rounded-full shadow-[0_20px_50px_rgba(212,175,55,0.3)] group flex items-center justify-center border-2 border-white/10"
-          >
-            <ShoppingBagIcon className="w-8 h-8" />
-            <motion.div 
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-              className="absolute inset-0 rounded-full bg-gold/20 -z-10"
-            />
-          </motion.button>
+          <div className="fixed bottom-10 right-10 z-[100] flex flex-col items-end gap-4">
+             {/* Mini-Cart Overlay */}
+             <AnimatePresence>
+                {isMiniCartOpen && cartCount > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                    className="w-72 lg:w-80 bg-black/80 backdrop-blur-2xl border border-gold/20 rounded-[32px] overflow-hidden shadow-2xl"
+                  >
+                    <header className="p-6 border-b border-white/5 flex justify-between items-center bg-gold/5">
+                       <h4 className="text-[10px] font-black uppercase tracking-widest text-gold">Current Selection</h4>
+                       <button onClick={() => setIsMiniCartOpen(false)}><XMarkIcon className="w-4 h-4 text-silver" /></button>
+                    </header>
+                    <div className="max-h-60 overflow-y-auto p-4 space-y-3 no-scrollbar">
+                       {cart.map(item => (
+                         <div key={item.id} className="flex justify-between items-center gap-4 group">
+                            <div className="flex-1 overflow-hidden">
+                               <p className="text-[10px] font-bold text-white truncate uppercase">{item.name}</p>
+                               <p className="text-[8px] text-gold font-black">₦{item.price.toLocaleString()} x {item.quantity}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                               <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-5 h-5 flex items-center justify-center bg-white/5 rounded-full text-gold text-[10px]">-</button>
+                               <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-5 h-5 flex items-center justify-center bg-white/5 rounded-full text-gold text-[10px]">+</button>
+                            </div>
+                         </div>
+                       ))}
+                    </div>
+                    <footer className="p-6 border-t border-white/5 bg-black/40 space-y-4">
+                       <div className="flex justify-between items-end">
+                          <span className="text-[8px] text-silver uppercase font-black tracking-widest">Total Audit</span>
+                          <span className="text-xl font-serif text-gold font-black">₦{totalAmount.toLocaleString()}</span>
+                       </div>
+                       <GoldButton onClick={() => { setIsMiniCartOpen(false); navigate('/orders'); }} className="w-full py-4 text-[9px]">
+                          Complete Transmission
+                       </GoldButton>
+                    </footer>
+                  </motion.div>
+                )}
+             </AnimatePresence>
+
+             {/* Floating Trigger */}
+             <motion.button
+                initial={{ scale: 0, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => {
+                  if (cartCount > 0) setIsMiniCartOpen(!isMiniCartOpen);
+                  else navigate('/orders');
+                }}
+                className="p-6 bg-gold text-black rounded-full shadow-[0_20px_50px_rgba(212,175,55,0.3)] group flex items-center justify-center border-2 border-white/10 relative"
+              >
+                <ShoppingBagIcon className="w-8 h-8" />
+                {cartCount > 0 && (
+                  <div className="absolute -top-1 -right-1 bg-white text-black text-[10px] font-black w-6 h-6 rounded-full flex items-center justify-center border-2 border-gold shadow-lg">
+                    {cartCount}
+                  </div>
+                )}
+                <motion.div 
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="absolute inset-0 rounded-full bg-gold/20 -z-10"
+                />
+              </motion.button>
+          </div>
         )}
       </AnimatePresence>
 
@@ -225,7 +284,11 @@ export const Layout = ({
                     <GoldButton onClick={handleSignOut} className="w-full py-5 text-[11px]">Terminate Session</GoldButton>
                   </div>
                 ) : (
-                  <GoldButton onClick={() => { setIsMobileMenuOpen(false); setIsLoginOpen(true); }} className="w-full py-5 text-[11px]">Authorize Access</GoldButton>
+                  <div className="space-y-4">
+                    <GoldButton onClick={() => { setIsMobileMenuOpen(false); setIsLoginOpen(true); }} className="w-full py-5 text-[11px] flex items-center justify-center gap-3">
+                      <KeyIcon className="w-4 h-4" /> Authorize Access
+                    </GoldButton>
+                  </div>
                 )}
               </div>
             </motion.div>

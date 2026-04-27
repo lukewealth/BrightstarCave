@@ -20,11 +20,7 @@ import {
   collection, 
   addDoc, 
   serverTimestamp, 
-  query, 
-  where, 
   onSnapshot, 
-  orderBy, 
-  limit,
   doc,
   updateDoc,
   increment,
@@ -44,14 +40,11 @@ import {
   Toast 
 } from "../components/design-system/Primitive";
 import { trackAddToCart, trackPurchase, trackEvent, Events } from "../lib/analytics";
-
-interface CartItem extends MenuItem {
-  quantity: number;
-}
+import { useCart } from "../lib/cart-context";
 
 export const OrderingPage = ({ user }: { user: User | null }) => {
+  const { cart, addToCart, updateQuantity, clearCart, totalAmount, cartCount } = useCart();
   const [role, setRole] = useState<UserRole | null>(null);
-  const [cart, setCart] = useState<CartItem[]>([]);
   const [displayMenu, setDisplayMenu] = useState<MenuItem[]>(menuItems);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
@@ -103,9 +96,6 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type, visible: true });
   };
-
-  const totalAmount = useMemo(() => cart.reduce((s, i) => s + (i.price * i.quantity), 0), [cart]);
-  const cartCount = useMemo(() => cart.reduce((s, i) => s + i.quantity, 0), [cart]);
 
   const handlePrintReceipt = (order: any) => {
     const printWindow = window.open('', '_blank', 'width=300,height=600');
@@ -169,7 +159,7 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
       }
       const snap = await getDoc(orderRef);
       handlePrintReceipt({ id: pendingOrderId, ...snap.data() });
-      setCart([]); setPendingOrderId(null); setShowCheckout(false); setIsCartOpen(false);
+      clearCart(); setPendingOrderId(null); setShowCheckout(false); setIsCartOpen(false);
       showToast("Settlement Audited. Dispatch Authorized.");
     } catch (err) { showToast("Audit failure", "error"); }
     finally { setIsSubmitting(false); }
@@ -182,17 +172,6 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
       setPendingOrderId(null); setShowCheckout(false);
       showToast(reason, "error");
     } catch (err) { console.error(err); }
-  };
-
-  const addToCart = (item: MenuItem) => {
-    if (item.stock <= 0) return showToast("Resource Depleted", "error");
-    setCart(prev => {
-      const existing = prev.find(i => i.id === item.id);
-      if (existing) return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
-      return [...prev, { ...item, quantity: 1 }];
-    });
-    if (!isCartOpen && window.innerWidth >= 1024) setIsCartOpen(true);
-    showToast(`${item.name} staged`);
   };
 
   const filteredItems = useMemo(() => {
@@ -242,7 +221,7 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
               </div>
               <div className="mt-10 flex items-center justify-between">
                 <p className={`text-[10px] font-black uppercase ${item.stock < 10 ? 'text-red-400' : 'text-gold/40'}`}>{item.stock} in stock</p>
-                <GoldButton onClick={() => addToCart(item)} disabled={item.stock <= 0} className="py-2.5 px-6">
+                <GoldButton onClick={() => { addToCart(item); showToast(`${item.name} staged`); }} disabled={item.stock <= 0} className="py-2.5 px-6">
                    <span className="text-[9px] uppercase font-black tracking-widest">Select</span>
                 </GoldButton>
               </div>
@@ -250,28 +229,6 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
           ))}
         </div>
       </main>
-
-      {/* Floating Shopping Bag Trigger */}
-      <AnimatePresence>
-        {!isCartOpen && cartCount > 0 && (
-          <motion.button
-            initial={{ scale: 0, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0, opacity: 0, y: 20 }}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => setIsCartOpen(true)}
-            className="fixed bottom-10 right-10 z-[100] p-6 bg-gold text-black rounded-full shadow-[0_20px_50px_rgba(212,175,55,0.3)] group"
-          >
-            <div className="relative">
-              <ShoppingBagIcon className="w-8 h-8" />
-              <div className="absolute -top-3 -right-3 bg-white text-black text-[10px] font-black w-6 h-6 rounded-full flex items-center justify-center border-2 border-gold shadow-lg group-hover:bg-primary group-hover:text-gold transition-colors">
-                {cartCount}
-              </div>
-            </div>
-          </motion.button>
-        )}
-      </AnimatePresence>
 
       <AnimatePresence>
         {isCartOpen && (
@@ -288,9 +245,9 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
                     <p className="text-[9px] text-gold font-mono tracking-widest">₦{(item.price * item.quantity).toLocaleString()}</p>
                   </div>
                   <div className="flex items-center gap-4 bg-black/40 rounded-xl px-3 py-1.5 border border-white/5">
-                    <button onClick={() => setCart(prev => prev.map(i => i.id === item.id ? { ...i, quantity: Math.max(0, i.quantity - 1) } : i).filter(i => i.quantity > 0))} className="text-gold hover:text-white transition-colors">-</button>
+                    <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="text-gold hover:text-white transition-colors">-</button>
                     <span className="text-[10px] font-black text-white w-4 text-center">{item.quantity}</span>
-                    <button onClick={() => { if(item.quantity < (displayMenu.find(m => m.id === item.id)?.stock || 0)) setCart(prev => prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i)); else showToast("Audit limit reached", "error"); }} className="text-gold hover:text-white transition-colors">+</button>
+                    <button onClick={() => { if(item.quantity < (displayMenu.find(m => m.id === item.id)?.stock || 0)) updateQuantity(item.id, item.quantity + 1); else showToast("Audit limit reached", "error"); }} className="text-gold hover:text-white transition-colors">+</button>
                   </div>
                 </div>
               ))}
@@ -315,7 +272,7 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
         )}
       </AnimatePresence>
 
-      <GlassModal isOpen={showCheckout} onClose={() => {}} title="Audit Synchronization Active">
+      <GlassModal isOpen={showCheckout} onClose={() => setShowCheckout(false)} title="Audit Synchronization Active">
         <div className="space-y-8 p-4">
           <div className="p-8 bg-gold/5 border border-gold/20 rounded-[32px] text-center space-y-8 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1 bg-white/5"><motion.div className="h-full bg-gold shadow-[0_0_15px_rgba(212,175,55,0.5)]" initial={{ width: "100%" }} animate={{ width: "0%" }} transition={{ duration: 60, ease: "linear" }} /></div>
@@ -348,9 +305,24 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <button onClick={() => handleCancelOrder()} className="py-5 rounded-2xl bg-white/5 border border-white/10 text-silver hover:text-red-400 transition-all uppercase text-[9px] font-black tracking-widest">Discard Record</button>
-            <EmeraldButton onClick={handleConfirmPayment} className="py-5" disabled={isSubmitting}><span className="text-[9px] uppercase font-black tracking-widest">Authorize Paid</span></EmeraldButton>
+            <button 
+              onClick={() => setShowCheckout(false)} 
+              className="py-5 rounded-2xl bg-white/5 border border-white/10 text-silver hover:text-white transition-all uppercase text-[9px] font-black tracking-widest"
+            >
+              Back to Cart
+            </button>
+            <EmeraldButton onClick={handleConfirmPayment} className="py-5" disabled={isSubmitting}>
+              <span className="text-[9px] uppercase font-black tracking-widest">Authorize Paid</span>
+            </EmeraldButton>
           </div>
+          
+          <button 
+            onClick={() => handleCancelOrder()} 
+            className="w-full py-4 text-red-500/40 hover:text-red-500 transition-all uppercase text-[8px] font-black tracking-[0.4em]"
+          >
+            Discard & Purge Record
+          </button>
+
           <p className="text-[8px] text-center text-silver/20 uppercase tracking-[0.3em] font-black">All transmissions are permanent and audited by the master protocol</p>
         </div>
       </GlassModal>

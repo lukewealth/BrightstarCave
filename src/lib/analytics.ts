@@ -51,6 +51,8 @@ export const trackPurchase = (orderId: string, total: number, items: any[]) => {
     items: items.map(i => ({
       item_id: i.id,
       item_name: i.name,
+      item_category: i.category,
+      item_variant: i.type, // kitchen or bar
       price: i.price,
       quantity: i.quantity
     }))

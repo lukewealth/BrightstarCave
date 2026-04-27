@@ -22,7 +22,8 @@ import {
   AdjustmentsHorizontalIcon,
   ArchiveBoxIcon,
   CloudArrowUpIcon,
-  UserIcon
+  UserIcon,
+  CheckBadgeIcon
 } from "@heroicons/react/24/outline";
 import { User, sendPasswordResetEmail } from "firebase/auth";
 import { 
@@ -76,7 +77,17 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
     const activeOrders = orders.filter(o => o.status === 'pending-payment').length;
     const lowStock = inventory.filter(i => i.stock < 10).length;
 
-    return { totalRevenue, activeOrders, lowStock, totalOrders: todaysOrders.length };
+    const barRevenue = todaysOrders.reduce((acc, curr) => {
+      const barItems = curr.items?.filter((i: any) => i.type === 'bar') || [];
+      return acc + barItems.reduce((sum: number, i: any) => sum + (i.price * i.quantity), 0);
+    }, 0);
+
+    const kitchenRevenue = todaysOrders.reduce((acc, curr) => {
+      const kitchenItems = curr.items?.filter((i: any) => i.type === 'kitchen') || [];
+      return acc + kitchenItems.reduce((sum: number, i: any) => sum + (i.price * i.quantity), 0);
+    }, 0);
+
+    return { totalRevenue, activeOrders, lowStock, totalOrders: todaysOrders.length, barRevenue, kitchenRevenue };
   }, [orders, inventory]);
 
   useEffect(() => {
@@ -257,6 +268,31 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
             </div>
           </div>
         </header>
+
+        {view === 'dashboard' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+             <GlassCard className="p-8 space-y-4">
+                <p className="text-[8px] uppercase tracking-widest text-gold font-black">Total Transmissions</p>
+                <p className="text-4xl font-serif font-black">{stats.totalOrders}</p>
+                <Badge color="gold">Verified Settlements</Badge>
+             </GlassCard>
+             <GlassCard className="p-8 space-y-4">
+                <p className="text-[8px] uppercase tracking-widest text-emerald font-black">Bar Revenue</p>
+                <p className="text-4xl font-serif font-black">₦{stats.barRevenue.toLocaleString()}</p>
+                <Badge color="emerald">Liquid Assets</Badge>
+             </GlassCard>
+             <GlassCard className="p-8 space-y-4">
+                <p className="text-[8px] uppercase tracking-widest text-purple-400 font-black">Kitchen Revenue</p>
+                <p className="text-4xl font-serif font-black">₦{stats.kitchenRevenue.toLocaleString()}</p>
+                <Badge color="purple">Gastronomy Assets</Badge>
+             </GlassCard>
+             <GlassCard className="p-8 space-y-4 border-red-500/10">
+                <p className="text-[8px] uppercase tracking-widest text-red-500 font-black">Low Stock Alert</p>
+                <p className="text-4xl font-serif font-black">{stats.lowStock}</p>
+                <Badge color="red">Immediate Restock</Badge>
+             </GlassCard>
+          </div>
+        )}
 
         {view === 'inventory' && (
           <div className="space-y-10">

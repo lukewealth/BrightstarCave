@@ -24,9 +24,6 @@ service cloud.firestore {
       );
     }
 
-    function incoming() { return request.resource.data; }
-    function existing() { return resource.data; }
-
     // 1. Menu Collection
     match /menu/{itemId} {
       allow read: if true;
@@ -35,17 +32,16 @@ service cloud.firestore {
 
     // 2. Orders Collection
     match /orders/{orderId} {
-      // Users can see their own orders, Staff/Admins see relevant records
       allow list: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
         resource.data.staffId == request.auth.uid ||
-        isAdmin()
+        isAdmin() || isStaff()
       );
       
       allow get: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
         resource.data.staffId == request.auth.uid ||
-        isAdmin()
+        isAdmin() || isStaff()
       );
       
       allow create: if isSignedIn();
@@ -53,8 +49,10 @@ service cloud.firestore {
       allow update: if isSignedIn() && (
         isAdmin() || 
         isStaff() ||
-        (existing().userId == request.auth.uid && existing().status == 'new')
+        (resource.data.userId == request.auth.uid && resource.data.status == 'new')
       );
+      
+      allow delete: if isAdmin();
     }
 
     // 3. Inventory
@@ -63,9 +61,13 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
     
-    // 4. Personnel Management
+    // 4. Personnel Management (admins collection)
     match /admins/{adminId} {
-      allow read: if isSignedIn() && (request.auth.uid == adminId || isAdmin());
+      // Allow list for admins to see all staff
+      allow list: if isAdmin();
+      // Allow read for own document or if admin
+      allow get: if isSignedIn() && (request.auth.uid == adminId || isAdmin());
+      // Allow write for admins to onboard/edit staff
       allow write: if isAdmin();
     }
   }

@@ -21,7 +21,8 @@ import {
   QueueListIcon,
   AdjustmentsHorizontalIcon,
   ArchiveBoxIcon,
-  CloudArrowUpIcon
+  CloudArrowUpIcon,
+  UserIcon
 } from "@heroicons/react/24/outline";
 import { User, sendPasswordResetEmail } from "firebase/auth";
 import { 
@@ -87,7 +88,7 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
   useEffect(() => {
     if (role !== 'admin') return;
 
-    const unsubOrders = onSnapshot(query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(200)), (snap) => {
+    const unsubOrders = onSnapshot(query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(500)), (snap) => {
       setOrders(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
 
@@ -120,42 +121,70 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
   const handleUpdateStaff = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (selectedItem.id) {
-        await updateDoc(doc(db, "admins", selectedItem.id), selectedItem);
-        showToast("Operator synchronized");
-      } else {
-        const staffRef = doc(collection(db, "admins"));
-        await setDoc(staffRef, { ...selectedItem, id: staffRef.id, createdAt: serverTimestamp() });
-        showToast("Personnel creation successful");
-      }
+      if (!selectedItem.email) throw new Error("Email required");
+      
+      const staffRef = selectedItem.id ? doc(db, "admins", selectedItem.id) : doc(collection(db, "admins"));
+      const staffData = {
+        email: selectedItem.email,
+        role: selectedItem.role || 'staff_waiter',
+        updatedAt: serverTimestamp(),
+        ...(selectedItem.id ? {} : { createdAt: serverTimestamp() })
+      };
+
+      await setDoc(staffRef, staffData, { merge: true });
+      showToast(selectedItem.id ? "Personnel updated" : "Operator onboarded successfully");
       setIsModalOpen(false);
-    } catch (err) {
-      showToast("Access update failed", "error");
+    } catch (err: any) {
+      showToast(err.message || "Failed to update staff", "error");
     }
   };
 
   const handleUpdateMenu = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (selectedItem.id) {
-        await updateDoc(doc(db, "menu", selectedItem.id), selectedItem);
-        showToast("Menu entry updated");
-      } else {
-        const menuRef = doc(collection(db, "menu"));
-        await setDoc(menuRef, { ...selectedItem, id: menuRef.id, createdAt: serverTimestamp() });
-        await setDoc(doc(db, "inventory", menuRef.id), { id: menuRef.id, name: selectedItem.name, category: selectedItem.category, stock: 0, soldCount: 0 });
-        showToast("New transmission resource added");
-      }
+      if (!selectedItem.name || !selectedItem.price) throw new Error("Name and Price required");
+      
+      const menuRef = selectedItem.id ? doc(db, "menu", selectedItem.id) : doc(collection(db, "menu"));
+      const itemId = selectedItem.id || menuRef.id;
+      
+      const itemData = {
+        id: itemId,
+        name: selectedItem.name,
+        price: Number(selectedItem.price),
+        category: selectedItem.category || 'Bar',
+        type: selectedItem.type || 'bar',
+        description: selectedItem.description || '',
+        stock: Number(selectedItem.stock || 0),
+        updatedAt: serverTimestamp(),
+        ...(selectedItem.id ? {} : { createdAt: serverTimestamp() })
+      };
+
+      await setDoc(menuRef, itemData, { merge: true });
+      
+      // Sync to Inventory
+      const invRef = doc(db, "inventory", itemId);
+      await setDoc(invRef, {
+        id: itemId,
+        name: itemData.name,
+        category: itemData.category,
+        stock: itemData.stock,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
+      showToast("Resource synchronization successful");
       setIsModalOpen(false);
-    } catch (err) {
-      showToast("Menu synchronization failed", "error");
+    } catch (err: any) {
+      showToast(err.message || "Menu update failed", "error");
     }
   };
 
   const handleUpdateInventory = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await updateDoc(doc(db, "inventory", selectedItem.id), { stock: selectedItem.stock });
+      await updateDoc(doc(db, "inventory", selectedItem.id), { stock: Number(selectedItem.stock) });
+      // Sync stock back to menu for live readiness
+      await updateDoc(doc(db, "menu", selectedItem.id), { stock: Number(selectedItem.stock) });
+      
       showToast("Stock level authorization confirmed");
       setIsModalOpen(false);
     } catch (err) {
@@ -165,11 +194,11 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
 
   const navItems = [
     { id: 'dashboard', icon: ChartBarIcon, label: 'Analytics' },
-    { id: 'orders', icon: ArrowPathIcon, label: 'Queue' },
+    { id: 'orders', icon: ArrowPathIcon, label: 'Sales Queue' },
     { id: 'inventory', icon: ArchiveBoxIcon, label: 'Inventory' },
-    { id: 'menu', icon: QueueListIcon, label: 'Menu Registry' },
+    { id: 'menu', icon: QueueListIcon, label: 'Master Menu' },
     { id: 'staff', icon: UserGroupIcon, label: 'Personnel' },
-    { id: 'accounting', icon: BanknotesIcon, label: 'Finance' },
+    { id: 'accounting', icon: BanknotesIcon, label: 'Financials' },
   ];
 
   if (role !== 'admin') {
@@ -177,8 +206,8 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
       <div className="h-full flex items-center justify-center bg-primary p-6 lg:p-20 text-center">
         <GlassCard className="p-12 space-y-6 max-w-lg">
           <ExclamationTriangleIcon className="w-16 h-16 text-gold mx-auto animate-pulse" />
-          <h2 className="text-3xl font-serif text-white uppercase tracking-widest">Administrative Restricted</h2>
-          <p className="text-silver opacity-60">System access restricted to Master Protocol holders.</p>
+          <h2 className="text-3xl font-serif text-white uppercase tracking-widest">Access Restricted</h2>
+          <p className="text-silver opacity-60">System protocols require administrative clearance.</p>
         </GlassCard>
       </div>
     );
@@ -190,7 +219,7 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
         <div className="space-y-12">
           <div className="px-2">
             <div className="flex justify-between items-center mb-10">
-              <p className="text-[9px] uppercase tracking-[0.4em] text-gold font-black opacity-60">Command Terminal</p>
+              <p className="text-[9px] uppercase tracking-[0.4em] text-gold font-black opacity-60">Master Command</p>
               <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-1 text-silver/40"><XMarkIcon className="w-5 h-5" /></button>
             </div>
             <nav className="space-y-2">
@@ -205,7 +234,7 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
           <div className="pt-6 border-t border-white/5">
             <button onClick={handleRestoreArchive} className="w-full flex items-center gap-3 p-4 rounded-2xl bg-emerald/10 border border-emerald/20 text-emerald hover:bg-emerald hover:text-black transition-all group">
               <CloudArrowUpIcon className="w-5 h-5" />
-              <span className="text-[9px] font-black uppercase tracking-widest">Restore Archive</span>
+              <span className="text-[9px] font-black uppercase tracking-widest">Factory Restore</span>
             </button>
           </div>
         </div>
@@ -214,44 +243,56 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
       <main className="flex-1 overflow-y-auto p-6 lg:p-12 xl:p-20 space-y-10 lg:space-y-16 no-scrollbar">
         <header className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-8 pb-8 border-b border-white/5">
           <div className="space-y-3">
-            <h3 className="text-gold text-[9px] uppercase tracking-[0.6em] font-black opacity-60">Admin Protocol v8.2</h3>
+            <h3 className="text-gold text-[9px] uppercase tracking-[0.6em] font-black opacity-60">Admin Protocol v9.2</h3>
             <h2 className="text-4xl xl:text-5xl font-serif text-white tracking-tighter uppercase">{view}</h2>
           </div>
           <div className="flex gap-6">
             <div className="xl:text-right">
-              <p className="text-[8px] uppercase tracking-widest text-silver mb-1 opacity-60">Global Paid Revenue</p>
+              <p className="text-[8px] uppercase tracking-widest text-silver mb-1 opacity-60">Global Net Revenue</p>
               <p className="text-2xl lg:text-3xl font-serif text-gold font-black">₦{stats.totalRevenue.toLocaleString()}</p>
             </div>
             <div className="xl:text-right border-l border-white/10 pl-6">
-              <p className="text-[8px] uppercase tracking-widest text-silver mb-1 opacity-60">Low Stock Resources</p>
-              <p className="text-2xl lg:text-3xl font-serif text-white font-black">{stats.lowStock}</p>
+              <p className="text-[8px] uppercase tracking-widest text-silver mb-1 opacity-60">Active Queue</p>
+              <p className="text-2xl lg:text-3xl font-serif text-white font-black">{stats.activeOrders}</p>
             </div>
           </div>
         </header>
 
         {view === 'inventory' && (
-          <LuxuryTable headers={['Resource Identification', 'Availability', 'Transmissions', 'Status', 'Sync']}>
-            {inventory.map((item) => (
-              <tr key={item.id} className="group hover:bg-white/[0.02] border-b border-white/[0.02]">
-                <td className="px-6 py-5"><p className="text-sm font-bold text-white leading-none">{item.name}</p><p className="text-[8px] text-silver uppercase tracking-[0.2em] mt-2">{item.category}</p></td>
-                <td className="px-6 py-5 font-mono text-gold font-black">{item.stock} Units</td>
-                <td className="px-6 py-5 text-silver text-xs">{item.soldCount || 0}</td>
-                <td className="px-6 py-5"><Badge color={item.stock < 10 ? 'red' : 'emerald'}>{item.stock < 10 ? 'Critical' : 'Operational'}</Badge></td>
-                <td className="px-6 py-5"><button onClick={() => { setSelectedItem(item); setModalType('item'); setIsModalOpen(true); }} className="p-2 text-silver/40 hover:text-gold transition-all"><AdjustmentsHorizontalIcon className="w-5 h-5" /></button></td>
-              </tr>
-            ))}
-          </LuxuryTable>
+          <div className="space-y-10">
+            <SectionTitle subtitle="Resource Synchronization" title="Stock Analytics" />
+            <LuxuryTable headers={['Resource Identification', 'Category', 'Stock Availability', 'Sold Units', 'Action']}>
+              {inventory.map((item) => (
+                <tr key={item.id} className="group hover:bg-white/[0.02] border-b border-white/[0.02]">
+                  <td className="px-6 py-5">
+                    <p className="text-sm font-bold text-white leading-none uppercase tracking-wide">{item.name}</p>
+                  </td>
+                  <td className="px-6 py-5">
+                    <Badge color="silver">{item.category}</Badge>
+                  </td>
+                  <td className="px-6 py-5 font-mono text-gold font-black">{item.stock} Units</td>
+                  <td className="px-6 py-5 text-silver text-xs font-bold italic">{item.soldCount || 0} transmission</td>
+                  <td className="px-6 py-5 text-right">
+                    <button onClick={() => { setSelectedItem(item); setModalType('item'); setIsModalOpen(true); }} className="p-2 text-silver/40 hover:text-gold transition-all"><AdjustmentsHorizontalIcon className="w-5 h-5" /></button>
+                  </td>
+                </tr>
+              ))}
+            </LuxuryTable>
+          </div>
         )}
 
         {view === 'menu' && (
           <div className="space-y-10">
-            <div className="flex justify-between items-center"><SectionTitle subtitle="Gastronomy Configuration" title="Master Registry" /><GoldButton onClick={() => { setModalType('menu'); setSelectedItem({ category: 'Bar', price: 0 }); setIsModalOpen(true); }}><PlusIcon className="w-4 h-4 mr-2" /> Add Resource</GoldButton></div>
+            <div className="flex justify-between items-center"><SectionTitle subtitle="Registry Control" title="Master Gastronomy" /><GoldButton onClick={() => { setModalType('menu'); setSelectedItem({ category: 'Bar', price: 0, type: 'bar' }); setIsModalOpen(true); }}><PlusIcon className="w-4 h-4 mr-2" /> Create Item</GoldButton></div>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {menuItems.map((item) => (
                 <GlassCard key={item.id} className="p-8 space-y-6 border-white/5 hover:border-gold/30 transition-all group">
                   <div className="flex justify-between items-start"><Badge color="gold">{item.category}</Badge><p className="text-xl font-serif text-white font-black">₦{item.price.toLocaleString()}</p></div>
-                  <div className="space-y-2"><h4 className="text-xl font-bold text-white group-hover:text-gold transition-colors">{item.name}</h4><p className="text-xs text-silver/60 line-clamp-3 leading-relaxed">{item.description}</p></div>
-                  <div className="flex gap-4 pt-6 border-t border-white/5"><button onClick={() => { setSelectedItem(item); setModalType('menu'); setIsModalOpen(true); }} className="flex-1 py-3 text-[9px] uppercase font-black tracking-widest text-silver hover:text-gold border border-white/10 rounded-2xl transition-all">Configure</button><button onClick={async () => { if(window.confirm("Purge resource?")) await deleteDoc(doc(db, "menu", item.id)); }} className="p-3 text-red-400/20 hover:text-red-400 hover:bg-red-400/10 rounded-2xl transition-all"><TrashIcon className="w-5 h-5" /></button></div>
+                  <div className="space-y-2"><h4 className="text-xl font-bold text-white group-hover:text-gold transition-colors leading-tight">{item.name}</h4><p className="text-[10px] text-silver/60 line-clamp-3 leading-relaxed">{item.description}</p></div>
+                  <div className="flex gap-4 pt-6 border-t border-white/5">
+                    <button onClick={() => { setSelectedItem(item); setModalType('menu'); setIsModalOpen(true); }} className="flex-1 py-3 text-[9px] uppercase font-black tracking-widest text-silver hover:text-gold border border-white/10 rounded-2xl transition-all">Configure</button>
+                    <button onClick={async () => { if(window.confirm("Purge resource?")) { await deleteDoc(doc(db, "menu", item.id)); await deleteDoc(doc(db, "inventory", item.id)); showToast("Resource purged"); } }} className="p-3 text-red-400/20 hover:text-red-400 hover:bg-red-400/10 rounded-2xl transition-all"><TrashIcon className="w-5 h-5" /></button>
+                  </div>
                 </GlassCard>
               ))}
             </div>
@@ -260,43 +301,74 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
 
         {view === 'staff' && (
           <div className="space-y-10">
-            <div className="flex justify-between items-center"><SectionTitle subtitle="Personnel Directory" title="Access Points" /><GoldButton onClick={() => { setModalType('staff'); setSelectedItem({ role: 'staff_waiter' }); setIsModalOpen(true); }}><UserPlusIcon className="w-4 h-4 mr-2" /> Onboard Operator</GoldButton></div>
+            <div className="flex justify-between items-center"><SectionTitle subtitle="Operational Security" title="Operator Directory" /><GoldButton onClick={() => { setModalType('staff'); setSelectedItem({ role: 'staff_waiter' }); setIsModalOpen(true); }}><UserPlusIcon className="w-4 h-4 mr-2" /> Add Personnel</GoldButton></div>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {staff.map((member) => (
                 <GlassCard key={member.id} className="p-8 space-y-6 border-white/5 group">
-                  <div className="flex justify-between items-start"><div className="w-14 h-14 rounded-2xl bg-black border border-white/10 flex items-center justify-center text-gold font-bold text-2xl shadow-2xl">{member.email?.[0].toUpperCase()}</div><Badge color={member.role === 'admin' ? 'gold' : member.role === 'staff_bar' ? 'purple' : 'emerald'}>{member.role.replace('_', ' ').toUpperCase()}</Badge></div>
-                  <div className="space-y-1"><p className="text-sm font-bold text-white truncate">{member.email}</p><p className="text-[8px] uppercase tracking-[0.3em] text-silver/40 font-black">Operator Key: {member.id.slice(-8)}</p></div>
-                  <div className="flex gap-4 pt-6 border-t border-white/5"><button onClick={() => { setSelectedItem(member); setModalType('staff'); setIsModalOpen(true); }} className="flex-1 py-3 text-[9px] uppercase font-black tracking-widest text-silver hover:text-gold border border-white/10 rounded-2xl transition-all">Permissions</button><button onClick={async () => { if(window.confirm("Revoke access?")) await deleteDoc(doc(db, "admins", member.id)); }} className="p-3 text-red-400/20 hover:text-red-400 rounded-2xl transition-all"><TrashIcon className="w-5 h-5" /></button></div>
+                  <div className="flex justify-between items-start"><div className="w-14 h-14 rounded-2xl bg-black border border-white/10 flex items-center justify-center text-gold font-bold text-2xl shadow-2xl uppercase">{member.email?.[0]}</div><Badge color={member.role === 'admin' ? 'gold' : member.role === 'staff_bar' ? 'purple' : 'emerald'}>{member.role.replace('_', ' ').toUpperCase()}</Badge></div>
+                  <div className="space-y-1"><p className="text-sm font-bold text-white truncate tracking-widest">{member.email}</p><p className="text-[8px] uppercase tracking-[0.3em] text-silver/40 font-black">Operator Key: {member.id.slice(-8)}</p></div>
+                  <div className="flex gap-4 pt-6 border-t border-white/5">
+                    <button onClick={() => { setSelectedItem(member); setModalType('staff'); setIsModalOpen(true); }} className="flex-1 py-3 text-[9px] uppercase font-black tracking-widest text-silver hover:text-gold border border-white/10 rounded-2xl transition-all">Credentials</button>
+                    <button onClick={async () => { if(window.confirm("Revoke access?")) { await deleteDoc(doc(db, "admins", member.id)); showToast("Access revoked"); } }} className="p-3 text-red-400/20 hover:text-red-400 rounded-2xl transition-all"><TrashIcon className="w-5 h-5" /></button>
+                  </div>
                 </GlassCard>
               ))}
             </div>
           </div>
         )}
+
+        {view === 'accounting' && (
+           <div className="space-y-8">
+              <SectionTitle subtitle="Production Audit" title="Financial Settlements" />
+              <LuxuryTable headers={['Audit Ref', 'Timestamp', 'Operator', 'Value', 'Status']}>
+                {orders.filter(o => o.status === 'paid').map((order) => (
+                  <tr key={order.id} className="group hover:bg-white/[0.02] border-b border-white/[0.02]">
+                    <td className="px-8 py-6 text-xs text-white font-black uppercase tracking-tighter">{order.id.slice(-10)}</td>
+                    <td className="px-8 py-6 text-[10px] text-silver font-mono">{order.formattedDate} {order.formattedTime}</td>
+                    <td className="px-8 py-6"><div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-emerald shadow-[0_0_10px_#10b981]" /><p className="text-[10px] text-white font-black uppercase">{order.staffName || "System"}</p></div></td>
+                    <td className="px-8 py-6 font-serif text-gold font-black">₦{order.total?.toLocaleString()}</td>
+                    <td className="px-8 py-6"><Badge color="emerald">AUDITED</Badge></td>
+                  </tr>
+                ))}
+              </LuxuryTable>
+           </div>
+        )}
       </main>
 
-      <GlassModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Registry Configuration">
+      <GlassModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Master System Configuration">
         <div className="max-h-[70vh] overflow-y-auto no-scrollbar pr-2">
           {modalType === 'staff' && (
             <form onSubmit={handleUpdateStaff} className="space-y-6">
-              <div className="space-y-2"><label className="text-[10px] uppercase font-black text-silver">Email Authorization</label><SilverInput icon={EnvelopeIcon} placeholder="Operator email" value={selectedItem?.email || ''} onChange={(e: any) => setSelectedItem({ ...selectedItem, email: e.target.value })} /></div>
-              <div className="space-y-2"><label className="text-[10px] uppercase font-black text-silver">Department</label><select value={selectedItem?.role || 'staff_waiter'} onChange={(e) => setSelectedItem({ ...selectedItem, role: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white focus:outline-none focus:border-gold/30"><option value="staff_waiter">Kitchen (Waiter)</option><option value="staff_bar">Bar Terminal</option><option value="admin">Global Protocol</option></select></div>
-              <GoldButton type="submit" className="w-full py-5 text-[11px]">Authorize Operator</GoldButton>
+              <div className="space-y-2"><label className="text-[10px] uppercase font-black text-silver">Email Identity</label><SilverInput icon={EnvelopeIcon} placeholder="Operator authentication email" value={selectedItem?.email || ''} onChange={(e: any) => setSelectedItem({ ...selectedItem, email: e.target.value })} /></div>
+              <div className="space-y-2"><label className="text-[10px] uppercase font-black text-silver">Protocol Role</label><select value={selectedItem?.role || 'staff_waiter'} onChange={(e) => setSelectedItem({ ...selectedItem, role: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white focus:outline-none focus:border-gold/30"><option value="staff_waiter">Kitchen Operator (Waiter)</option><option value="staff_bar">Bar Operator (Liquid)</option><option value="admin">Global Protocol (Super Admin)</option></select></div>
+              <GoldButton type="submit" className="w-full py-5 text-[11px] uppercase tracking-[0.2em]">{selectedItem?.id ? 'Authorize Update' : 'Initialize Onboarding'}</GoldButton>
             </form>
           )}
+
           {modalType === 'menu' && (
             <form onSubmit={handleUpdateMenu} className="space-y-6">
-              <SilverInput placeholder="Designation" value={selectedItem?.name || ''} onChange={(e: any) => setSelectedItem({ ...selectedItem, name: e.target.value })} />
-              <SilverInput type="number" placeholder="Credit Value" value={selectedItem?.price || 0} onChange={(e: any) => setSelectedItem({ ...selectedItem, price: Number(e.target.value) })} />
-              <div className="space-y-2"><label className="text-[10px] uppercase font-black text-silver">Registry Category</label><select value={selectedItem?.category || 'Bar'} onChange={(e) => setSelectedItem({ ...selectedItem, category: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white"><option value="Bar">Bar</option><option value="Kitchen Menu">Kitchen</option><option value="Exotic Kitchen">Exotic Kitchen</option><option value="Mocktails">Mocktails</option><option value="Cocktails">Cocktails</option><option value="Whiskey">Whiskey</option><option value="Tequila">Tequila</option><option value="Wine">Wine</option><option value="Beer">Beer</option><option value="Soft Drinks">Soft Drinks</option><option value="Apartments">Apartments</option><option value="Leisure">Leisure</option></select></div>
-              <textarea placeholder="Description" value={selectedItem?.description || ''} onChange={(e) => setSelectedItem({ ...selectedItem, description: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm text-white h-32 focus:outline-none" />
-              <GoldButton type="submit" className="w-full py-5 text-[11px]">Synchronize Menu</GoldButton>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2"><label className="text-[10px] uppercase font-black text-silver">Resource Designation</label><SilverInput placeholder="Item name" value={selectedItem?.name || ''} onChange={(e: any) => setSelectedItem({ ...selectedItem, name: e.target.value })} /></div>
+                <div className="space-y-2"><label className="text-[10px] uppercase font-black text-silver">Credit Value (₦)</label><SilverInput type="number" placeholder="Price" value={selectedItem?.price || 0} onChange={(e: any) => setSelectedItem({ ...selectedItem, price: e.target.value })} /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2"><label className="text-[10px] uppercase font-black text-silver">Category Registry</label><select value={selectedItem?.category || 'Bar'} onChange={(e) => setSelectedItem({ ...selectedItem, category: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white focus:outline-none"><option value="Bar">Bar</option><option value="Kitchen Menu">Kitchen Menu</option><option value="Exotic Kitchen">Exotic Kitchen</option><option value="Mocktails">Mocktails</option><option value="Cocktails">Cocktails</option><option value="Whiskey">Whiskey</option><option value="Tequila">Tequila</option><option value="Wine">Wine</option><option value="Beer">Beer</option><option value="Soft Drinks">Soft Drinks</option><option value="Apartments">Apartments</option><option value="Leisure">Leisure</option></select></div>
+                <div className="space-y-2"><label className="text-[10px] uppercase font-black text-silver">Initial Availability</label><SilverInput type="number" placeholder="Stock" value={selectedItem?.stock || 0} onChange={(e: any) => setSelectedItem({ ...selectedItem, stock: e.target.value })} /></div>
+              </div>
+              <div className="space-y-2"><label className="text-[10px] uppercase font-black text-silver">Resource Type</label><select value={selectedItem?.type || 'bar'} onChange={(e) => setSelectedItem({ ...selectedItem, type: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white focus:outline-none"><option value="bar">Bar (Beverage)</option><option value="kitchen">Kitchen (Food)</option><option value="hotel">Stay (Apartments)</option></select></div>
+              <div className="space-y-2"><label className="text-[10px] uppercase font-black text-silver">Luxury Description</label><textarea placeholder="Specify resource characteristics..." value={selectedItem?.description || ''} onChange={(e) => setSelectedItem({ ...selectedItem, description: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm text-white h-24 focus:outline-none" /></div>
+              <GoldButton type="submit" className="w-full py-5 text-[11px] uppercase tracking-[0.2em]">{selectedItem?.id ? 'Authorize Resource Update' : 'Initialize Resource Transmission'}</GoldButton>
             </form>
           )}
+
           {modalType === 'item' && (
-            <form onSubmit={handleUpdateInventory} className="space-y-6">
-              <div className="p-6 bg-black/40 rounded-[24px] border border-white/5 text-center space-y-2"><p className="text-[10px] uppercase font-black text-gold">Resource Sync</p><p className="text-xl font-serif text-white">{selectedItem?.name}</p></div>
-              <SilverInput type="number" placeholder="Stock Level" value={selectedItem?.stock || 0} onChange={(e: any) => setSelectedItem({ ...selectedItem, stock: Number(e.target.value) })} />
-              <GoldButton type="submit" className="w-full py-5 text-[11px]">Authorize Stock</GoldButton>
+            <form onSubmit={handleUpdateInventory} className="space-y-6 text-center">
+              <div className="p-8 bg-black/40 rounded-[32px] border border-white/5 space-y-4">
+                 <p className="text-[10px] uppercase font-black text-gold tracking-[0.5em]">Resource Adjustment</p>
+                 <h4 className="text-2xl font-serif text-white">{selectedItem?.name}</h4>
+              </div>
+              <div className="space-y-2 text-left"><label className="text-[10px] uppercase font-black text-silver ml-4">Authorized Availability Count</label><SilverInput type="number" placeholder="Adjust Stock" value={selectedItem?.stock || 0} onChange={(e: any) => setSelectedItem({ ...selectedItem, stock: e.target.value })} /></div>
+              <GoldButton type="submit" className="w-full py-5 text-[11px] uppercase tracking-[0.2em]">Confirm Inventory Audit</GoldButton>
             </form>
           )}
         </div>

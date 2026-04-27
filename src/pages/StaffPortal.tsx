@@ -13,7 +13,12 @@ import {
   PrinterIcon,
   ClockIcon,
   BoltIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
+  PlusIcon,
+  MagnifyingGlassIcon,
+  ShoppingBagIcon,
+  TableCellsIcon,
+  IdentificationIcon
 } from "@heroicons/react/24/outline";
 import { User } from "firebase/auth";
 import { 
@@ -25,7 +30,10 @@ import {
   doc, 
   updateDoc, 
   serverTimestamp,
-  where
+  where,
+  addDoc,
+  increment,
+  getDoc
 } from "firebase/firestore";
 import { db, getUserRole, UserRole } from "../lib/firebase";
 import { 
@@ -33,16 +41,29 @@ import {
   Badge, 
   SectionTitle,
   LuxuryTable, 
-  Toast 
+  Toast,
+  GoldButton,
+  SilverInput,
+  EmeraldButton,
+  GlassModal
 } from "../components/design-system/Primitive";
+import { useCart } from "../lib/cart-context";
+import { menuItems, MenuItem } from "../data/menu";
 
 export const StaffPortal = ({ user }: { user: User | null }) => {
+  const { cart, addToCart, updateQuantity, clearCart, totalAmount } = useCart();
   const [role, setRole] = useState<UserRole | null>(null);
-  const [view, setView] = useState<'dashboard' | 'inventory' | 'orders' | 'accounting'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'inventory' | 'orders' | 'accounting' | 'pos'>('dashboard');
   const [orders, setOrders] = useState<any[]>([]);
   const [inventory, setInventory] = useState<any[]>([]);
+  const [displayMenu, setDisplayMenu] = useState<MenuItem[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [aiInsights, setAiInsights] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [tableId, setTableId] = useState("");
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error', visible: boolean }>({ message: '', type: 'success', visible: false });
 
   // Comprehensive Department Categorization
@@ -53,7 +74,7 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
     if (role === 'staff_waiter') {
       return ["Kitchen Menu", "Exotic Kitchen"];
     }
-    return []; // Admin or generic staff sees all or is handled differently
+    return []; 
   }, [role]);
 
   const departmentType = useMemo(() => {
@@ -68,12 +89,11 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
     return 'General Operations';
   }, [role]);
 
-  // Stats calculation - Filtered by Departmental Scope
+  // Stats calculation
   const stats = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // Filter orders relevant to this department (either they assisted or it contains their items)
     const relevantOrders = orders.filter(o => 
       role === 'admin' || 
       o.staffId === user?.uid || 
@@ -84,26 +104,11 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
     const totalRevenue = paidOrders.reduce((acc, curr) => acc + (curr.total || 0), 0);
     const activeOrders = relevantOrders.filter(o => o.status === 'pending-payment').length;
     
-    // Filter inventory based on department categories
     const relevantInventory = role === 'admin' ? inventory : inventory.filter(i => deptCategories.includes(i.category));
     const lowStock = relevantInventory.filter(i => i.stock < 10).length;
 
     return { totalRevenue, activeOrders, lowStock, totalOrders: paidOrders.length, relevantOrders };
   }, [orders, inventory, role, deptCategories, departmentType, user?.uid]);
-
-  useEffect(() => {
-    if (stats.totalOrders > 0 || stats.activeOrders > 0) {
-      const insights = [
-        `${departmentName} throughput is synchronized at 98.4% efficiency.`,
-        `Active transmissions detected: ${stats.activeOrders}. Prioritize guest settlement.`,
-        `Daily revenue attribution: ₦${stats.totalRevenue.toLocaleString()}. Keep it up.`,
-        "Gemini Intelligence: Inventory velocity suggests restocking top categories soon."
-      ];
-      setAiInsights(insights[Math.floor(Math.random() * insights.length)]);
-    } else {
-      setAiInsights("System heartbeat stable. Awaiting guest dispatch transmissions.");
-    }
-  }, [stats, departmentName]);
 
   useEffect(() => {
     if (user) {
@@ -114,14 +119,7 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
   useEffect(() => {
     if (!role || role === 'guest') return;
 
-    // Load orders - optimized to see all orders so department filtering can happen in memory
-    const qOrders = query(
-      collection(db, "orders"), 
-      orderBy("createdAt", "desc"), 
-      limit(200)
-    );
-    
-    const unsubOrders = onSnapshot(qOrders, (snap) => {
+    const unsubOrders = onSnapshot(query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(200)), (snap) => {
       setOrders(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
 
@@ -129,8 +127,28 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
       setInventory(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
 
-    return () => { unsubOrders(); unsubInv(); };
+    const unsubMenu = onSnapshot(collection(db, "menu"), (snap) => {
+      if (!snap.empty) {
+        setDisplayMenu(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as MenuItem[]);
+      } else {
+        setDisplayMenu(menuItems);
+      }
+    });
+
+    return () => { unsubOrders(); unsubInv(); unsubMenu(); };
   }, [role, user]);
+
+  const filteredPOSMenu = useMemo(() => {
+    return displayMenu.filter(item => {
+      const isInDepartment = role === 'admin' || deptCategories.includes(item.category);
+      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+      return isInDepartment && matchesSearch;
+    });
+  }, [displayMenu, searchQuery, deptCategories, role]);
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type, visible: true });
+  };
 
   const handlePrintReceipt = (order: any) => {
     const printWindow = window.open('', '_blank', 'width=300,height=600');
@@ -140,8 +158,79 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
     printWindow.document.close();
   };
 
+  const handleInitiateOrder = async () => {
+    if (!tableId) return showToast("Room/Table Identification required", "error");
+    setIsSubmitting(true);
+    const now = new Date();
+    try {
+      const departmentalItems = cart.map(i => {
+        const menuItem = displayMenu.find(m => m.id === i.id);
+        return {
+          id: i.id,
+          name: i.name,
+          quantity: i.quantity,
+          price: i.price,
+          type: menuItem?.type || 'bar',
+          category: menuItem?.category || 'Bar'
+        };
+      });
+
+      const orderData = {
+        table: tableId,
+        items: departmentalItems,
+        total: totalAmount,
+        status: "pending-payment",
+        userId: "staff_entry",
+        userName: `Staff Order (${user?.email?.split('@')[0]})`,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        formattedDate: now.toLocaleDateString(),
+        formattedTime: now.toLocaleTimeString(),
+        isStaffAssisted: true,
+        staffId: user?.uid,
+        staffName: user?.displayName || user?.email?.split('@')[0],
+        departmentScopes: Array.from(new Set(departmentalItems.map(i => i.type)))
+      };
+      const docRef = await addDoc(collection(db, "orders"), orderData);
+      setPendingOrderId(docRef.id);
+      setShowCheckout(true);
+    } catch (err) { showToast("Transmission failure", "error"); }
+    finally { setIsSubmitting(false); }
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!pendingOrderId) return;
+    setIsSubmitting(true);
+    try {
+      const orderRef = doc(db, "orders", pendingOrderId);
+      await updateDoc(orderRef, { 
+        status: "paid", 
+        paymentConfirmedAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+
+      for (const item of cart) {
+        const menuRef = doc(db, "menu", item.id);
+        const invRef = doc(db, "inventory", item.id);
+        await updateDoc(menuRef, { stock: increment(-item.quantity) }).catch(() => {});
+        await updateDoc(invRef, { stock: increment(-item.quantity), soldCount: increment(item.quantity) }).catch(() => {});
+      }
+
+      const snap = await getDoc(orderRef);
+      handlePrintReceipt({ id: pendingOrderId, ...snap.data() });
+      
+      clearCart(); 
+      setPendingOrderId(null); 
+      setShowCheckout(false); 
+      showToast("Settlement Audited. Dispatch Authorized.");
+      setView('orders');
+    } catch (err) { showToast("Audit failure", "error"); }
+    finally { setIsSubmitting(false); }
+  };
+
   const navItems = [
     { id: 'dashboard', icon: ChartBarIcon, label: 'Analytics' },
+    { id: 'pos', icon: PlusIcon, label: 'Order Entry' },
     { id: 'orders', icon: ArrowPathIcon, label: 'Dispatch Queue' },
     { id: 'inventory', icon: Square2StackIcon, label: 'Resource Stock' },
     { id: 'accounting', icon: BanknotesIcon, label: 'Transmission Ledger' },
@@ -190,18 +279,6 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
               ))}
             </nav>
           </div>
-          <div className="p-8 rounded-[32px] bg-gradient-to-br from-emerald/10 to-transparent border border-emerald/20 shadow-2xl relative overflow-hidden group">
-            <div className="absolute top-0 left-0 w-full h-1 bg-emerald/20 overflow-hidden">
-               <motion.div animate={{ x: ["-100%", "100%"] }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }} className="w-1/3 h-full bg-emerald shadow-[0_0_10px_#10b981]" />
-            </div>
-            <div className="flex items-center gap-3 mb-4 text-emerald">
-              <SparklesIcon className="w-4 h-4 animate-pulse" />
-              <span className="text-[8px] font-black uppercase tracking-widest">Gemini Operational Intelligence</span>
-            </div>
-            <p className="text-[11px] text-silver leading-relaxed font-bold italic opacity-80 group-hover:opacity-100 transition-opacity">
-              {aiInsights}
-            </p>
-          </div>
         </div>
         
         <div className="p-4 lg:p-6 border-t border-white/5 flex items-center gap-4">
@@ -213,25 +290,65 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto p-6 lg:p-12 xl:p-20 space-y-12 no-scrollbar">
+      <main className="flex-1 overflow-y-auto p-6 lg:p-12 xl:p-16 space-y-10 no-scrollbar">
         <header className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-10 pb-10 border-b border-white/5 relative">
           <div className="space-y-4">
             <h3 className="text-gold text-[10px] uppercase tracking-[0.6em] font-black opacity-40 flex items-center gap-3">
-              <BoltIcon className="w-4 h-4" /> Secure Operational Transmission v4.1
+              <BoltIcon className="w-4 h-4" /> Secure Operational POS v1.0
             </h3>
-            <h2 className="text-4xl xl:text-6xl font-serif text-white tracking-tighter uppercase">{view}</h2>
+            <h2 className="text-4xl xl:text-6xl font-serif text-white tracking-tighter uppercase">{view === 'pos' ? 'Order Entry' : view}</h2>
           </div>
-          <div className="flex gap-8">
-            <div className="xl:text-right space-y-1">
-              <p className="text-[9px] uppercase tracking-widest text-silver/40 font-black">Daily Volume (Verified)</p>
-              <p className="text-3xl font-serif text-gold font-black tracking-tighter">₦{stats.totalRevenue.toLocaleString()}</p>
-            </div>
-            <div className="xl:text-right border-l border-white/10 pl-8 space-y-1">
-              <p className="text-[9px] uppercase tracking-widest text-silver/40 font-black">Active transmissions</p>
-              <p className="text-3xl font-serif text-white font-black tracking-tighter">{stats.activeOrders}</p>
-            </div>
-          </div>
+          {view === 'pos' && (
+            <SilverInput placeholder="Quick Menu Search..." icon={MagnifyingGlassIcon} value={searchQuery} onChange={(e: any) => setSearchQuery(e.target.value)} className="w-full xl:w-96" />
+          )}
         </header>
+
+        {view === 'pos' && (
+          <div className="flex flex-col xl:flex-row gap-10">
+            <div className="flex-1 space-y-8">
+              <SectionTitle subtitle="Departmental Selection" title="Master Menu" />
+              <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
+                {filteredPOSMenu.map(item => (
+                  <GlassCard key={item.id} className="p-6 space-y-4 hover:border-gold/30 transition-all cursor-pointer group" onClick={() => { addToCart(item); showToast(`${item.name} added`); }}>
+                    <div className="flex justify-between items-start">
+                      <Badge color={item.stock > 0 ? 'gold' : 'red'}>{item.stock} Unit</Badge>
+                      <p className="text-lg font-black text-gold">₦{item.price.toLocaleString()}</p>
+                    </div>
+                    <h4 className="text-lg font-serif text-white uppercase group-hover:text-gold transition-colors">{item.name}</h4>
+                    <p className="text-[10px] text-silver/40 uppercase font-black tracking-widest">{item.category}</p>
+                  </GlassCard>
+                ))}
+              </div>
+            </div>
+            
+            <aside className="w-full xl:w-96 space-y-8">
+              <GlassCard className="p-8 space-y-8 border-gold/10">
+                <h3 className="text-xs font-black uppercase tracking-widest flex items-center gap-4"><ShoppingBagIcon className="w-5 h-5 text-gold" /> Current Cart</h3>
+                <div className="space-y-4 max-h-[400px] overflow-y-auto no-scrollbar">
+                  {cart.map(item => (
+                    <div key={item.id} className="flex justify-between items-center p-4 bg-white/5 rounded-2xl">
+                      <div className="space-y-1">
+                        <p className="text-[11px] font-bold text-white uppercase">{item.name}</p>
+                        <p className="text-[10px] text-gold font-mono">₦{(item.price * item.quantity).toLocaleString()}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="text-silver hover:text-white">-</button>
+                        <span className="text-xs font-black w-4 text-center">{item.quantity}</span>
+                        <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="text-silver hover:text-white">+</button>
+                      </div>
+                    </div>
+                  ))}
+                  {cart.length === 0 && <p className="text-[10px] text-center text-silver/40 py-10 uppercase tracking-widest">Cart is empty</p>}
+                </div>
+                <div className="pt-8 border-t border-white/5 space-y-6">
+                  <SilverInput placeholder="Table / Room ID" icon={TableCellsIcon} value={tableId} onChange={(e: any) => setTableId(e.target.value)} />
+                  <div className="flex justify-between items-end"><span className="text-[10px] uppercase tracking-widest text-silver/40">Total Value</span><span className="text-3xl font-serif text-gold font-black">₦{totalAmount.toLocaleString()}</span></div>
+                  <GoldButton className="w-full py-4 text-[10px] uppercase font-black tracking-widest" disabled={cart.length === 0 || !tableId} onClick={handleInitiateOrder}>Checkout Order</GoldButton>
+                </div>
+              </GlassCard>
+            </aside>
+          </div>
+        )}
 
         {view === 'dashboard' && (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
@@ -295,9 +412,7 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
                        <ClockIcon className="w-4 h-4 text-gold animate-spin-slow" />
                        <span className="text-[9px] text-gold font-black uppercase tracking-widest">Synchronization In-Progress</span>
                      </div>
-                     <button onClick={() => window.location.href = `/orders`} className="p-4 bg-white/5 rounded-2xl text-gold hover:bg-gold hover:text-black transition-all group-hover:translate-x-1 shadow-2xl border border-white/5">
-                       <ChevronRightIcon className="w-6 h-6" />
-                     </button>
+                     <GoldButton onClick={() => { setPendingOrderId(order.id); setShowCheckout(true); }} className="px-6 py-3 text-[10px] uppercase font-black tracking-widest">Process Settlement</GoldButton>
                   </div>
                 </motion.div>
               ))}
@@ -356,6 +471,21 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
           </div>
         )}
       </main>
+
+      <GlassModal isOpen={showCheckout} onClose={() => setShowCheckout(false)} title="Audit Synchronization Active">
+        <div className="space-y-8 p-4">
+          <div className="p-8 bg-gold/5 border border-gold/20 rounded-[32px] text-center space-y-8 relative overflow-hidden">
+            <ClockIcon className="w-14 h-14 text-gold animate-pulse mx-auto opacity-60" />
+            <div className="space-y-2"><p className="text-4xl font-serif text-white font-black">Audit Active</p><p className="text-[9px] uppercase tracking-[0.4em] text-gold font-black">Waiting for Settlement Proof</p></div>
+            <div className="space-y-4 pt-6 border-t border-white/5 text-left">
+              <div className="flex justify-between"><span className="text-[9px] text-silver uppercase font-bold tracking-widest">Bank Identifier</span><span className="text-[10px] text-gold font-black tracking-widest">MONIEPOINT 5007071458</span></div>
+              <div className="flex justify-between"><span className="text-[9px] text-silver uppercase font-bold tracking-widest">Verified Value</span><span className="text-xl text-white font-serif font-black">₦{pendingOrderId ? orders.find(o => o.id === pendingOrderId)?.total?.toLocaleString() : totalAmount.toLocaleString()}</span></div>
+            </div>
+          </div>
+          <EmeraldButton onClick={handleConfirmPayment} className="w-full py-5" disabled={isSubmitting}><span className="text-[9px] uppercase font-black tracking-widest">Authorize Paid & Print</span></EmeraldButton>
+        </div>
+      </GlassModal>
+
       <Toast message={toast.message} type={toast.type} isVisible={toast.visible} onClose={() => setToast({ ...toast, visible: false })} />
     </div>
   );

@@ -24,11 +24,6 @@ export const AboutUsPage = () => {
     return () => clearInterval(timer);
   }, []);
 
-  const hover2X = {
-    scale: 1.0,
-    transition: { duration: 0.3, ease: "easeInOut" }
-  };
-
   return (
     <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-16 lg:space-y-24 py-12 lg:py-24">
       <header className="text-center space-y-4 lg:space-y-6">
@@ -194,7 +189,7 @@ export const AboutUsPage = () => {
                 <span className="text-[10px] lg:text-xs text-emerald font-bold uppercase tracking-widest">16:00 - LATE</span>
               </div>
               <motion.button 
-                whileHover={hover2X}
+                whileHover={{ scale: 1.02 }}
                 className="w-full py-4 bg-emerald text-black font-black uppercase text-[9px] lg:text-[10px] tracking-[0.3em] lg:tracking-[0.4em] rounded-2xl mt-4"
               >
                 Send Message

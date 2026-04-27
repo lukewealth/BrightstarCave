@@ -12,7 +12,6 @@ import {
   NoSymbolIcon,
   BanknotesIcon,
   BoltIcon,
-  InformationCircleIcon,
   Square2StackIcon
 } from "@heroicons/react/24/outline";
 import { User } from "firebase/auth";
@@ -39,11 +38,11 @@ import {
   TabSystem, 
   Toast 
 } from "../components/design-system/Primitive";
-import { trackAddToCart, trackPurchase, trackEvent, Events } from "../lib/analytics";
+import { trackPurchase, trackEvent, Events } from "../lib/analytics";
 import { useCart } from "../lib/cart-context";
 
 export const OrderingPage = ({ user }: { user: User | null }) => {
-  const { cart, addToCart, updateQuantity, clearCart, totalAmount, cartCount } = useCart();
+  const { cart, addToCart, updateQuantity, clearCart, totalAmount } = useCart();
   const [role, setRole] = useState<UserRole | null>(null);
   const [displayMenu, setDisplayMenu] = useState<MenuItem[]>(menuItems);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,7 +57,7 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
   const [timeLeft, setTimeLeft] = useState<number>(60);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error', visible: boolean }>({ message: '', type: 'success', visible: false });
 
-  // Fetch Dynamic Menu (Live Readiness with Descriptions)
+  // Fetch Dynamic Menu and Staff List
   useEffect(() => {
     const unsubMenu = onSnapshot(collection(db, "menu"), (snap) => {
       if (!snap.empty) {
@@ -74,13 +73,40 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
     return () => unsubMenu();
   }, []);
 
-  const categories = useMemo(() => ["All", ...Array.from(new Set(displayMenu.map(i => i.category)))], [displayMenu]);
-
   useEffect(() => {
     if (user) {
       getUserRole(user.uid, user.email).then(setRole);
+    } else {
+      setRole('guest');
     }
   }, [user]);
+
+  // Comprehensive Department Categorization Logic
+  const deptCategories = useMemo(() => {
+    if (role === 'staff_bar') {
+      return ["Mocktails", "Cocktails", "Brandy & Cognac", "Whiskey", "Tequila", "Wine", "Beer", "Soft Drinks"];
+    }
+    if (role === 'staff_waiter') {
+      return ["Kitchen Menu", "Exotic Kitchen"];
+    }
+    return null; // Guest or Admin see all
+  }, [role]);
+
+  const filteredItems = useMemo(() => {
+    return displayMenu.filter(item => {
+      const isInDepartment = !deptCategories || deptCategories.includes(item.category);
+      const matchesCategory = activeTab === "All" || item.category === activeTab;
+      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                           item.description?.toLowerCase().includes(searchQuery.toLowerCase());
+      return isInDepartment && matchesCategory && matchesSearch;
+    });
+  }, [displayMenu, activeTab, searchQuery, deptCategories]);
+
+  const categories = useMemo(() => {
+    const allCats = Array.from(new Set(displayMenu.map(i => i.category)));
+    const filteredCats = deptCategories ? allCats.filter(c => deptCategories.includes(c)) : allCats;
+    return ["All", ...filteredCats];
+  }, [displayMenu, deptCategories]);
 
   // Audit Timer Logic
   useEffect(() => {
@@ -117,7 +143,7 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
 
   const handleInitiateOrder = async () => {
     if (!tableId) return showToast("Room/Table Identification required", "error");
-    if (!user && !selectedStaff) return showToast("Operator verification required", "error");
+    if (role === 'guest' && !selectedStaff) return showToast("Operator verification required", "error");
     
     setIsSubmitting(true);
     const now = new Date();
@@ -134,8 +160,8 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
         formattedDate: now.toLocaleDateString(),
         formattedTime: now.toLocaleTimeString(),
         isStaffAssisted: true,
-        staffId: user ? user.uid : selectedStaff.id,
-        staffName: user ? (user.displayName || user.email?.split('@')[0]) : selectedStaff.email.split('@')[0],
+        staffId: role !== 'guest' ? user?.uid : selectedStaff.id,
+        staffName: role !== 'guest' ? (user?.displayName || user?.email?.split('@')[0]) : selectedStaff.email.split('@')[0],
       };
       const docRef = await addDoc(collection(db, "orders"), orderData);
       setPendingOrderId(docRef.id);
@@ -159,7 +185,7 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
       }
       const snap = await getDoc(orderRef);
       handlePrintReceipt({ id: pendingOrderId, ...snap.data() });
-      clearCart(); setPendingOrderId(null); setShowCheckout(false); setIsCartOpen(false);
+      setCart([]); setPendingOrderId(null); setShowCheckout(false); setIsCartOpen(false);
       showToast("Settlement Audited. Dispatch Authorized.");
     } catch (err) { showToast("Audit failure", "error"); }
     finally { setIsSubmitting(false); }
@@ -174,20 +200,6 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
     } catch (err) { console.error(err); }
   };
 
-  const filteredItems = useMemo(() => {
-    return displayMenu.filter(item => {
-      const matchesCategory = activeTab === "All" || item.category === activeTab;
-      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                           item.description?.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesCategory && matchesSearch;
-    });
-  }, [displayMenu, activeTab, searchQuery]);
-
-  const handleCopyAccount = () => {
-    navigator.clipboard.writeText("5007071458");
-    showToast("Account number copied to clipboard");
-  };
-
   return (
     <div className="flex h-full bg-primary text-white overflow-hidden relative font-sans">
       <main className="flex-1 overflow-y-auto p-6 lg:p-12 space-y-8 no-scrollbar">
@@ -197,6 +209,9 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
                <BoltIcon className="w-3 h-3" /> Operational Gastronomy Live
              </h3>
              <SectionTitle subtitle="Curated Luxury Resources" title="Master Registry" />
+             {role !== 'guest' && (
+                <Badge color="emerald">Restricted to {departmentName} view</Badge>
+             )}
           </div>
           <SilverInput placeholder="Seek flavor or designation..." icon={MagnifyingGlassIcon} value={searchQuery} onChange={(e: any) => setSearchQuery(e.target.value)} className="w-full md:w-96 shadow-2xl" />
         </header>
@@ -255,7 +270,7 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
             <div className="mt-10 pt-10 border-t border-white/5 space-y-8">
               <div className="space-y-5">
                 <SilverInput placeholder="Specify Room / Table Identification" icon={TableCellsIcon} value={tableId} onChange={(e: any) => setTableId(e.target.value)} />
-                {!user && (
+                {role === 'guest' && (
                   <div className="space-y-3">
                     <label className="text-[9px] uppercase tracking-[0.4em] text-silver/40 font-black">Attending Personnel Verification</label>
                     <select onChange={(e) => setSelectedStaff(staffList.find(s => s.id === e.target.value))} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-[10px] text-white focus:border-gold/40 uppercase tracking-widest">
@@ -278,51 +293,16 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
             <div className="absolute top-0 left-0 w-full h-1 bg-white/5"><motion.div className="h-full bg-gold shadow-[0_0_15px_rgba(212,175,55,0.5)]" initial={{ width: "100%" }} animate={{ width: "0%" }} transition={{ duration: 60, ease: "linear" }} /></div>
             <ClockIcon className="w-14 h-14 text-gold animate-pulse mx-auto opacity-60" />
             <div className="space-y-2"><p className="text-4xl font-serif text-white font-black">{timeLeft}s</p><p className="text-[9px] uppercase tracking-[0.4em] text-gold font-black">Audit Window Active</p></div>
-            
-            <div className="space-y-6 pt-6 border-t border-white/5">
-              <div className="bg-black/40 rounded-2xl p-6 border border-white/10 space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-[9px] text-silver uppercase font-bold tracking-[0.2em]">Bank Institution</span>
-                  <span className="text-sm text-white font-serif tracking-widest">MONIEPOINT</span>
-                </div>
-                <div 
-                  className="flex justify-between items-center cursor-pointer group hover:bg-gold/5 p-2 -m-2 rounded-xl transition-all"
-                  onClick={handleCopyAccount}
-                >
-                  <span className="text-[9px] text-silver uppercase font-bold tracking-[0.2em]">Account Number</span>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xl text-gold font-mono font-black tracking-tighter">5007071458</span>
-                    <Square2StackIcon className="w-4 h-4 text-gold/40 group-hover:text-gold transition-colors" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-between items-end px-2">
-                <span className="text-[9px] text-silver uppercase font-bold tracking-[0.2em]">Verified Value</span>
-                <span className="text-3xl text-white font-serif font-black">₦{totalAmount.toLocaleString()}</span>
-              </div>
+            <div className="space-y-4 pt-6 border-t border-white/5 text-left">
+              <div className="flex justify-between"><span className="text-[9px] text-silver uppercase font-bold tracking-widest">Bank Identifier</span><span className="text-[10px] text-gold font-black tracking-widest">MONIEPOINT 5007071458</span></div>
+              <div className="flex justify-between"><span className="text-[9px] text-silver uppercase font-bold tracking-widest">Verified Value</span><span className="text-xl text-white font-serif font-black">₦{totalAmount.toLocaleString()}</span></div>
             </div>
           </div>
-
           <div className="grid grid-cols-2 gap-4">
-            <button 
-              onClick={() => setShowCheckout(false)} 
-              className="py-5 rounded-2xl bg-white/5 border border-white/10 text-silver hover:text-white transition-all uppercase text-[9px] font-black tracking-widest"
-            >
-              Back to Cart
-            </button>
-            <EmeraldButton onClick={handleConfirmPayment} className="py-5" disabled={isSubmitting}>
-              <span className="text-[9px] uppercase font-black tracking-widest">Authorize Paid</span>
-            </EmeraldButton>
+            <button onClick={() => setShowCheckout(false)} className="py-5 rounded-2xl bg-white/5 border border-white/10 text-silver hover:text-white transition-all uppercase text-[9px] font-black tracking-widest">Back to Cart</button>
+            <EmeraldButton onClick={handleConfirmPayment} className="py-5" disabled={isSubmitting}><span className="text-[9px] uppercase font-black tracking-widest">Authorize Paid</span></EmeraldButton>
           </div>
-          
-          <button 
-            onClick={() => handleCancelOrder()} 
-            className="w-full py-4 text-red-500/40 hover:text-red-500 transition-all uppercase text-[8px] font-black tracking-[0.4em]"
-          >
-            Discard & Purge Record
-          </button>
-
+          <button onClick={() => handleCancelOrder()} className="w-full py-4 text-red-500/40 hover:text-red-500 transition-all uppercase text-[8px] font-black tracking-[0.4em]">Discard & Purge Record</button>
           <p className="text-[8px] text-center text-silver/20 uppercase tracking-[0.3em] font-black">All transmissions are permanent and audited by the master protocol</p>
         </div>
       </GlassModal>

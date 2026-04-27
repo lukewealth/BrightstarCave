@@ -38,7 +38,7 @@ export const Layout = ({
   theme: string,
   toggleTheme: () => void
 }) => {
-  const { cart, totalAmount, cartCount, updateQuantity, removeFromCart } = useCart();
+  const { cart, totalAmount, cartCount, updateQuantity } = useCart();
   const location = useLocation();
   const navigate = useNavigate();
   const isAdminView = location.pathname.startsWith("/admin") || location.pathname.startsWith("/staff");
@@ -46,6 +46,17 @@ export const Layout = ({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMiniCartOpen, setIsMiniCartOpen] = useState(false);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error', visible: boolean }>({ message: '', type: 'success', visible: false });
+
+  // First time visit logic
+  useEffect(() => {
+    const hasVisited = localStorage.getItem("hasVisitedBrightstar");
+    if (!hasVisited && !user) {
+      setTimeout(() => {
+        setIsLoginOpen(true);
+        localStorage.setItem("hasVisitedBrightstar", "true");
+      }, 2000);
+    }
+  }, [user]);
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -83,9 +94,9 @@ export const Layout = ({
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-primary text-primary font-sans selection:bg-gold/30 relative">
+    <div className="min-h-screen flex flex-col bg-primary text-primary font-sans selection:bg-gold/30 relative overflow-x-hidden">
       <LoginPopup isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} />
-      
+
       {/* Staff Operations Bar */}
       <AnimatePresence>
         {isOperator && !isAdminView && (
@@ -120,7 +131,7 @@ export const Layout = ({
             <span className="text-[7px] lg:text-[8px] uppercase tracking-[0.4em] lg:tracking-[0.5em] text-gold mt-1 font-bold leading-none">Luxury Hospitality</span>
           </div>
         </div>
-        
+
         {/* Navigation */}
         <nav className="hidden lg:flex items-center gap-10">
           {navItems.map((nav, i) => (
@@ -160,22 +171,22 @@ export const Layout = ({
           >
             {theme === "dark" ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
           </motion.button>
-          
+
           {!user ? (
             <motion.button 
               whileHover={{ scale: 1.05 }} 
               onClick={() => setIsLoginOpen(true)} 
-              className="hidden lg:flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-silver bg-white/5 px-5 py-2.5 rounded-xl border border-white/10 transition-all hover:border-gold/40 hover:text-gold"
+              className="hidden lg:flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-silver bg-white/5 px-6 py-3 rounded-xl border border-white/10 transition-all hover:border-gold/40 hover:text-gold hover:bg-white/[0.08] shadow-2xl"
             >
               <KeyIcon className="w-4 h-4" /> Portal
             </motion.button>
           ) : (
             <div className="flex items-center gap-4">
-               <div className="w-8 h-8 rounded-full border border-gold/30 overflow-hidden hidden xs:block shadow-2xl">
+               <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full border-2 border-gold/30 overflow-hidden hidden xs:block shadow-2xl">
                   <OptimizedImage src={user.photoURL || `https://ui-avatars.com/api/?name=${user.email}&background=D4AF37&color=000`} alt="U" aspectRatio="h-full" artistic={false} />
                </div>
                <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-gold hover:bg-white/5 rounded-xl transition-all">
-                 <Bars3BottomRightIcon className="w-6 h-6" />
+                 <Bars3BottomRightIcon className="w-6 h-6 lg:w-7 lg:h-7" />
                </button>
             </div>
           )}
@@ -186,7 +197,7 @@ export const Layout = ({
       {/* Global Floating Shopping Icon (Chatbot Style Mini-Cart) */}
       <AnimatePresence>
         {!isAdminView && (
-          <div className="fixed bottom-10 right-10 z-[100] flex flex-col items-end gap-4">
+          <div className="fixed bottom-6 lg:bottom-10 right-6 lg:right-10 z-[100] flex flex-col items-end gap-4">
              {/* Mini-Cart Overlay */}
              <AnimatePresence>
                 {isMiniCartOpen && cartCount > 0 && (
@@ -194,7 +205,7 @@ export const Layout = ({
                     initial={{ opacity: 0, scale: 0.9, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                    className="w-72 lg:w-80 bg-black/80 backdrop-blur-2xl border border-gold/20 rounded-[32px] overflow-hidden shadow-2xl"
+                    className="w-72 lg:w-80 bg-black/80 backdrop-blur-3xl border border-gold/20 rounded-[32px] overflow-hidden shadow-2xl"
                   >
                     <header className="p-6 border-b border-white/5 flex justify-between items-center bg-gold/5">
                        <h4 className="text-[10px] font-black uppercase tracking-widest text-gold">Current Selection</h4>
@@ -237,9 +248,9 @@ export const Layout = ({
                   if (cartCount > 0) setIsMiniCartOpen(!isMiniCartOpen);
                   else navigate('/orders');
                 }}
-                className="p-6 bg-gold text-black rounded-full shadow-[0_20px_50px_rgba(212,175,55,0.3)] group flex items-center justify-center border-2 border-white/10 relative"
+                className="p-5 lg:p-6 bg-gold text-black rounded-full shadow-[0_20px_50px_rgba(212,175,55,0.3)] group flex items-center justify-center border-2 border-white/10 relative"
               >
-                <ShoppingBagIcon className="w-8 h-8" />
+                <ShoppingBagIcon className="w-7 h-7 lg:w-8 lg:h-8" />
                 {cartCount > 0 && (
                   <div className="absolute -top-1 -right-1 bg-white text-black text-[10px] font-black w-6 h-6 rounded-full flex items-center justify-center border-2 border-gold shadow-lg">
                     {cartCount}
@@ -296,7 +307,7 @@ export const Layout = ({
         )}
       </AnimatePresence>
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col">
         <main className="flex-1 overflow-y-auto bg-primary no-scrollbar">
           <AnimatePresence mode="wait">
             <motion.div key={location.pathname} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.4 }} className="h-full">
@@ -347,7 +358,7 @@ const Footer = ({ role }: { role: UserRole }) => {
               ))}
             </div>
           </div>
-          
+
           <div className="hidden sm:block">
             <h5 className="text-gold font-black mb-6 lg:mb-10 text-[10px] uppercase tracking-[0.5em] border-b border-gold/20 pb-4">Navigation</h5>
             <ul className="space-y-4 lg:space-y-5 text-secondary text-sm font-bold uppercase tracking-widest">
@@ -394,7 +405,7 @@ const Footer = ({ role }: { role: UserRole }) => {
             </div>
           </div>
         </div>
-        
+
         <div className="border-t border-white/[0.03] pt-12 lg:pt-16 flex flex-col lg:flex-row justify-between items-center gap-8 lg:gap-10">
           <p className="text-[8px] lg:text-[9px] text-secondary uppercase tracking-[0.4em] lg:tracking-[0.5em] font-black opacity-40 text-center lg:text-left">© 2024 Brightstar Cave. Advanced Luxury Systems.</p>
           <div className="flex flex-wrap justify-center gap-8 lg:gap-12 text-[8px] lg:text-[9px] text-secondary uppercase tracking-[0.4em] lg:tracking-[0.5em] font-black">
@@ -411,3 +422,4 @@ const Footer = ({ role }: { role: UserRole }) => {
     </footer>
   );
 };
+

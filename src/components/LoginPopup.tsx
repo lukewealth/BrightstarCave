@@ -1,6 +1,6 @@
 import { useState, FormEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Mail, Lock, User, ShieldCheck, Loader2, ArrowRight } from "lucide-react";
+import { X, Mail, Lock, User, ShieldCheck, Loader2, ArrowRight, ChevronRight, UserCircle } from "lucide-react";
 import { loginWithEmail, signInWithGoogle } from "../lib/firebase";
 
 interface LoginPopupProps {
@@ -9,6 +9,7 @@ interface LoginPopupProps {
 }
 
 export const LoginPopup = ({ isOpen, onClose }: LoginPopupProps) => {
+  const [step, setStep] = useState<"select" | "login">("select");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"guest" | "staff" | "admin">("guest");
@@ -34,115 +35,176 @@ export const LoginPopup = ({ isOpen, onClose }: LoginPopupProps) => {
     }
   };
 
+  const selectRole = (r: "guest" | "staff" | "admin") => {
+    setRole(r);
+    if (r === "guest") {
+      // Direct action for guest if preferred, or proceed to info
+      setStep("login");
+    } else {
+      setStep("login");
+    }
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/95 backdrop-blur-2xl">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-md bg-secondary border border-white/5 rounded-[32px] lg:rounded-[40px] overflow-hidden shadow-2xl p-8 lg:p-12"
+            className="relative w-full max-w-lg bg-secondary border border-white/5 rounded-[40px] lg:rounded-[56px] overflow-hidden shadow-2xl p-8 lg:p-16"
           >
             <button
               onClick={onClose}
-              className="absolute top-6 lg:top-8 right-6 lg:right-8 p-2 rounded-full border border-white/10 text-secondary hover:bg-emerald hover:text-black transition-all"
+              className="absolute top-8 lg:top-10 right-8 lg:right-10 p-2.5 rounded-full border border-white/10 text-silver hover:bg-gold hover:text-black transition-all z-10"
             >
-              <X size={18} />
+              <X size={20} />
             </button>
 
-            <div className="text-center mb-8 lg:mb-10">
-              <div className="size-16 lg:size-20 bg-emerald/5 rounded-[20px] lg:rounded-[24px] flex items-center justify-center mx-auto mb-5 lg:mb-6 border border-emerald/10 relative group">
-                {role === "admin" ? <ShieldCheck className="text-emerald" size={32} /> : <User className="text-emerald" size={32} />}
+            <AnimatePresence mode="wait">
+              {step === "select" ? (
                 <motion.div 
-                  animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.3, 0.1] }}
-                  transition={{ duration: 3, repeat: Infinity }}
-                  className="absolute inset-0 bg-emerald rounded-full blur-xl"
-                />
-              </div>
-              <h2 className="text-2xl lg:text-3xl font-serif text-white uppercase tracking-tight">Portal Entry</h2>
-              <p className="text-secondary text-[9px] lg:text-[10px] uppercase tracking-[0.3em] lg:tracking-[0.4em] mt-2 lg:mt-3 font-bold">Secure Access Verification</p>
-            </div>
-
-            <div className="flex gap-1.5 lg:gap-2 mb-8 lg:mb-10 p-1.5 bg-primary/50 rounded-2xl border border-white/5">
-              {(["guest", "staff", "admin"] as const).map((r) => (
-                <button
-                  key={r}
-                  onClick={() => { setRole(r); setError(null); }}
-                  className={`flex-1 py-2.5 lg:py-3 text-[9px] lg:text-[10px] uppercase font-bold tracking-[0.1em] lg:tracking-[0.2em] rounded-xl transition-all ${
-                    role === r ? "bg-emerald text-black shadow-xl" : "text-secondary hover:text-white"
-                  }`}
+                  key="select"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  className="space-y-10"
                 >
-                  {r}
-                </button>
-              ))}
-            </div>
+                  <div className="text-center">
+                    <h2 className="text-3xl lg:text-4xl font-serif text-white uppercase tracking-tight">Identity Registry</h2>
+                    <p className="text-silver/40 text-[10px] lg:text-[11px] uppercase tracking-[0.4em] mt-3 font-black">Define Your Protocol Baseline</p>
+                  </div>
 
-            <form onSubmit={handleLogin} className="space-y-4 lg:space-y-5">
-              {role !== "guest" ? (
-                <>
-                  <div className="space-y-1.5 lg:space-y-2">
-                    <label className="text-[9px] lg:text-[10px] uppercase tracking-[0.2em] lg:tracking-[0.3em] text-secondary font-bold ml-1">Email Terminal</label>
-                    <div className="relative">
-                      <Mail className="absolute left-4 lg:left-5 top-1/2 -translate-y-1/2 text-secondary/30" size={14} />
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="clearance@brightstar.cave"
-                        className="w-full bg-primary/80 border border-white/5 rounded-2xl py-4 lg:py-5 pl-12 lg:pl-14 pr-5 text-sm text-white focus:border-emerald/30 outline-none transition-all placeholder:text-white/10"
-                        required
-                      />
-                    </div>
+                  <div className="grid grid-cols-1 gap-4">
+                    <button 
+                      onClick={() => selectRole("guest")}
+                      className="group p-8 bg-white/[0.02] border border-white/5 rounded-[32px] flex items-center justify-between hover:bg-gold/5 hover:border-gold/20 transition-all text-left"
+                    >
+                      <div className="flex items-center gap-6">
+                        <div className="size-14 bg-gold/10 rounded-2xl flex items-center justify-center text-gold group-hover:scale-110 transition-transform">
+                          <UserCircle size={28} />
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-bold text-white uppercase">Guest Entry</h4>
+                          <p className="text-[10px] text-silver/40 uppercase tracking-widest mt-1">Luxury Gastronomy Access</p>
+                        </div>
+                      </div>
+                      <ChevronRight className="text-silver/20 group-hover:text-gold group-hover:translate-x-1 transition-all" />
+                    </button>
+
+                    <button 
+                      onClick={() => selectRole("staff")}
+                      className="group p-8 bg-white/[0.02] border border-white/5 rounded-[32px] flex items-center justify-between hover:bg-emerald/5 hover:border-emerald/20 transition-all text-left"
+                    >
+                      <div className="flex items-center gap-6">
+                        <div className="size-14 bg-emerald/10 rounded-2xl flex items-center justify-center text-emerald group-hover:scale-110 transition-transform">
+                          <ShieldCheck size={28} />
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-bold text-white uppercase">Operational Staff</h4>
+                          <p className="text-[10px] text-silver/40 uppercase tracking-widest mt-1">Fleet Management Terminal</p>
+                        </div>
+                      </div>
+                      <ChevronRight className="text-silver/20 group-hover:text-emerald group-hover:translate-x-1 transition-all" />
+                    </button>
                   </div>
-                  <div className="space-y-1.5 lg:space-y-2">
-                    <label className="text-[9px] lg:text-[10px] uppercase tracking-[0.2em] lg:tracking-[0.3em] text-secondary font-bold ml-1">Access Key</label>
-                    <div className="relative">
-                      <Lock className="absolute left-4 lg:left-5 top-1/2 -translate-y-1/2 text-secondary/30" size={14} />
-                      <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full bg-primary/80 border border-white/5 rounded-2xl py-4 lg:py-5 pl-12 lg:pl-14 pr-5 text-sm text-white focus:border-emerald/30 outline-none transition-all placeholder:text-white/10"
-                        required
-                      />
-                    </div>
-                  </div>
-                </>
+                </motion.div>
               ) : (
-                <div className="p-6 lg:p-8 text-center space-y-4 bg-primary/30 rounded-[24px] lg:rounded-3xl border border-white/5">
-                  <p className="text-xs lg:text-sm text-secondary font-light leading-relaxed">
-                    Guests are welcomed via <span className="text-emerald font-bold">Google Authentication</span> for an encrypted, seamless high-tier experience.
-                  </p>
-                </div>
-              )}
-
-              {error && (
-                <motion.p
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-red-500 text-[9px] lg:text-[10px] uppercase font-bold tracking-widest text-center py-2"
+                <motion.div 
+                  key="login"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-8"
                 >
-                  {error}
-                </motion.p>
+                  <button onClick={() => setStep("select")} className="text-[10px] font-black uppercase tracking-[0.3em] text-silver/40 hover:text-gold transition-colors flex items-center gap-2 mb-2">
+                    <ChevronRight size={14} className="rotate-180" /> Change Identity
+                  </button>
+
+                  <div className="text-center">
+                    <div className={`size-20 rounded-[24px] flex items-center justify-center mx-auto mb-6 border relative ${role === 'guest' ? 'bg-gold/5 border-gold/10' : 'bg-emerald/5 border-emerald/10'}`}>
+                      {role === "guest" ? <User className="text-gold" size={32} /> : <ShieldCheck className="text-emerald" size={32} />}
+                      <motion.div 
+                        animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.3, 0.1] }}
+                        transition={{ duration: 3, repeat: Infinity }}
+                        className={`absolute inset-0 rounded-full blur-xl ${role === 'guest' ? 'bg-gold' : 'bg-emerald'}`}
+                      />
+                    </div>
+                    <h2 className="text-2xl lg:text-3xl font-serif text-white uppercase tracking-tight">
+                      {role === 'guest' ? 'Guest Welcome' : 'Operational Login'}
+                    </h2>
+                  </div>
+
+                  <form onSubmit={handleLogin} className="space-y-6">
+                    {role !== "guest" ? (
+                      <>
+                        <div className="space-y-2">
+                          <label className="text-[10px] uppercase tracking-[0.3em] text-silver/40 font-black ml-1">Registry Email</label>
+                          <div className="relative">
+                            <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-silver/20" size={16} />
+                            <input
+                              type="email"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              placeholder="clearance@brightstar.cave"
+                              className="w-full bg-primary/50 border border-white/5 rounded-2xl py-5 pl-14 pr-6 text-sm text-white focus:border-emerald/30 outline-none transition-all placeholder:text-white/5"
+                              required
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] uppercase tracking-[0.3em] text-silver/40 font-black ml-1">Access Key</label>
+                          <div className="relative">
+                            <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-silver/20" size={16} />
+                            <input
+                              type="password"
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              placeholder="••••••••"
+                              className="w-full bg-primary/50 border border-white/5 rounded-2xl py-5 pl-14 pr-6 text-sm text-white focus:border-emerald/30 outline-none transition-all placeholder:text-white/5"
+                              required
+                            />
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="p-10 text-center space-y-6 bg-white/[0.02] border border-white/5 rounded-[40px]">
+                        <p className="text-sm lg:text-base text-silver/60 font-light leading-relaxed">
+                          Welcome to <span className="text-gold font-bold">Brightstar Cave</span>. Establish your guest presence via secure Google Authentication.
+                        </p>
+                      </div>
+                    )}
+
+                    {error && (
+                      <motion.p
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-red-500 text-[10px] uppercase font-black tracking-widest text-center py-2"
+                      >
+                        {error}
+                      </motion.p>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className={`w-full py-5 lg:py-6 font-black uppercase text-[11px] tracking-[0.3em] rounded-2xl hover:brightness-110 disabled:opacity-50 transition-all flex items-center justify-center gap-4 shadow-2xl mt-4
+                        ${role === 'guest' ? 'bg-gold text-black shadow-gold/10' : 'bg-emerald text-black shadow-emerald/10'}`}
+                    >
+                      {isLoading ? (
+                        <Loader2 className="animate-spin" size={20} />
+                      ) : (
+                        <>Establish Baseline <ArrowRight size={18} /></>
+                      )}
+                    </button>
+                  </form>
+                </motion.div>
               )}
+            </AnimatePresence>
 
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full py-4 lg:py-5 bg-emerald text-black font-black uppercase text-[10px] lg:text-[11px] tracking-[0.2em] lg:tracking-[0.3em] rounded-2xl hover:brightness-110 disabled:opacity-50 transition-all flex items-center justify-center gap-3 shadow-2xl shadow-emerald/10 mt-4 lg:mt-6"
-              >
-                {isLoading ? (
-                  <Loader2 className="animate-spin" size={18} />
-                ) : (
-                  <>Establish Connection <ArrowRight size={16} /></>
-                )}
-              </button>
-            </form>
-
-            <p className="text-[8px] lg:text-[9px] text-center text-secondary/20 uppercase tracking-[0.4em] lg:tracking-[0.5em] mt-10 lg:mt-12 font-bold">
-              Brightstar Encryption v4.0
+            <p className="text-[9px] text-center text-silver/10 uppercase tracking-[0.5em] mt-16 font-black">
+              Brightstar Operational Framework v4.2
             </p>
           </motion.div>
         </div>

@@ -2,19 +2,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // 0. Global Safety Net
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
     // Helper Primitives
     function isSignedIn() { return request.auth != null; }
     
     // Resilient Admin Check
     function isAdmin() { 
       return isSignedIn() && (
-        request.auth.token.email == 'contact@tricodepro' ||
-        request.auth.token.email == 'lukeokagha@gmail.com' ||
+        request.auth.token.email == 'contact@tricode.pro' ||
         (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) && 
          get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin')
       ); 
@@ -23,6 +17,7 @@ service cloud.firestore {
     function isStaff() {
       return isSignedIn() && (
         isAdmin() ||
+        request.auth.token.email == 'lukeokagha@gmail.com' ||
         (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) && 
          get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['admin', 'staff', 'staff_bar', 'staff_waiter'])
       );
@@ -37,15 +32,15 @@ service cloud.firestore {
     // 2. Orders Collection
     match /orders/{orderId} {
       allow list: if isSignedIn() && (
+        isAdmin() || isStaff() ||
         resource.data.userId == request.auth.uid || 
-        resource.data.staffId == request.auth.uid ||
-        isAdmin() || isStaff()
+        resource.data.staffId == request.auth.uid
       );
       
       allow get: if isSignedIn() && (
+        isAdmin() || isStaff() ||
         resource.data.userId == request.auth.uid || 
-        resource.data.staffId == request.auth.uid ||
-        isAdmin() || isStaff()
+        resource.data.staffId == request.auth.uid
       );
       
       allow create: if isSignedIn();
@@ -67,7 +62,7 @@ service cloud.firestore {
     
     // 4. Personnel Management (admins collection)
     match /admins/{adminId} {
-      // Allow list for admins, or users searching for their own email role check
+      // Allow list for admins, or users searching for their own email role check (limited to 1)
       allow list: if isAdmin() || (isSignedIn() && request.query.limit <= 1);
       
       // Allow get for own document or if admin
@@ -75,6 +70,11 @@ service cloud.firestore {
       
       // Allow write for admins to onboard/edit staff
       allow write: if isAdmin();
+    }
+
+    // 0. Global Safety Net (moved to end, and made less restrictive for authenticated users where specific rules might be missing)
+    match /{document=**} {
+      allow read, write: if isAdmin();
     }
   }
 }

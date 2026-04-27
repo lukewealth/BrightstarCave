@@ -47,14 +47,15 @@ export const Layout = ({
   const [isMiniCartOpen, setIsMiniCartOpen] = useState(false);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error', visible: boolean }>({ message: '', type: 'success', visible: false });
 
-  // First time visit logic
+  // First time visit logic - only show if they aren't authenticated and haven't seen it yet
   useEffect(() => {
     const hasVisited = localStorage.getItem("hasVisitedBrightstar");
     if (!hasVisited && !user) {
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         setIsLoginOpen(true);
         localStorage.setItem("hasVisitedBrightstar", "true");
-      }, 2000);
+      }, 2500);
+      return () => clearTimeout(timer);
     }
   }, [user]);
 
@@ -66,7 +67,9 @@ export const Layout = ({
   const handleSignOut = async () => {
     try {
       await signOut(auth);
-      setToast({ message: "Operational Session Terminated. Security Lock Active.", type: 'success', visible: true });
+      setIsMobileMenuOpen(false);
+      setToast({ message: "Session Terminated. Security Lock Active.", type: 'success', visible: true });
+      navigate("/");
     } catch (err) {
       setToast({ message: "Termination failed.", type: 'error', visible: true });
     }
@@ -182,6 +185,15 @@ export const Layout = ({
             </motion.button>
           ) : (
             <div className="flex items-center gap-4">
+               {/* Sign Out for Guests (Desktop) */}
+               {!isOperator && (
+                 <button 
+                   onClick={handleSignOut}
+                   className="hidden lg:flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors bg-red-500/5 px-4 py-2 rounded-xl border border-red-500/10"
+                 >
+                   <ArrowLeftOnRectangleIcon className="w-4 h-4" /> Sign Out
+                 </button>
+               )}
                <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full border-2 border-gold/30 overflow-hidden hidden xs:block shadow-2xl">
                   <OptimizedImage src={user.photoURL || `https://ui-avatars.com/api/?name=${user.email}&background=D4AF37&color=000`} alt="U" aspectRatio="h-full" artistic={false} />
                </div>
@@ -205,7 +217,7 @@ export const Layout = ({
                     initial={{ opacity: 0, scale: 0.9, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                    className="w-72 lg:w-80 bg-black/80 backdrop-blur-3xl border border-gold/20 rounded-[32px] overflow-hidden shadow-2xl"
+                    className="w-72 lg:w-80 bg-black/80 backdrop-blur-2xl border border-gold/20 rounded-[32px] overflow-hidden shadow-2xl"
                   >
                     <header className="p-6 border-b border-white/5 flex justify-between items-center bg-gold/5">
                        <h4 className="text-[10px] font-black uppercase tracking-widest text-gold">Current Selection</h4>
@@ -292,7 +304,9 @@ export const Layout = ({
                       <div className="w-10 h-10 rounded-full border border-gold/30 overflow-hidden"><OptimizedImage src={user.photoURL || ""} alt="U" aspectRatio="h-full" artistic={false} /></div>
                       <div className="overflow-hidden"><p className="text-[10px] font-black text-white truncate">{user.email}</p><p className="text-[8px] text-gold uppercase font-bold">{role}</p></div>
                     </div>
-                    <GoldButton onClick={handleSignOut} className="w-full py-5 text-[11px]">Terminate Session</GoldButton>
+                    <GoldButton onClick={handleSignOut} className="w-full py-5 text-[11px] flex items-center justify-center gap-2">
+                       <ArrowLeftOnRectangleIcon className="w-4 h-4" /> Terminate Session
+                    </GoldButton>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -422,4 +436,3 @@ const Footer = ({ role }: { role: UserRole }) => {
     </footer>
   );
 };
-

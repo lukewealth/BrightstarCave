@@ -185,7 +185,7 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
       }
       const snap = await getDoc(orderRef);
       handlePrintReceipt({ id: pendingOrderId, ...snap.data() });
-      setCart([]); setPendingOrderId(null); setShowCheckout(false); setIsCartOpen(false);
+      clearCart(); setPendingOrderId(null); setShowCheckout(false); setIsCartOpen(false);
       showToast("Settlement Audited. Dispatch Authorized.");
     } catch (err) { showToast("Audit failure", "error"); }
     finally { setIsSubmitting(false); }
@@ -200,6 +200,12 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
     } catch (err) { console.error(err); }
   };
 
+  const departmentName = useMemo(() => {
+    if (role === 'staff_bar') return "Bar";
+    if (role === 'staff_waiter') return "Kitchen";
+    return "Full";
+  }, [role]);
+
   return (
     <div className="flex h-full bg-primary text-white overflow-hidden relative font-sans">
       <main className="flex-1 overflow-y-auto p-6 lg:p-12 space-y-8 no-scrollbar">
@@ -209,7 +215,7 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
                <BoltIcon className="w-3 h-3" /> Operational Gastronomy Live
              </h3>
              <SectionTitle subtitle="Curated Luxury Resources" title="Master Registry" />
-             {role !== 'guest' && (
+             {role !== 'guest' && role && (
                 <Badge color="emerald">Restricted to {departmentName} view</Badge>
              )}
           </div>

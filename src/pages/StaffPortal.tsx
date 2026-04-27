@@ -18,7 +18,8 @@ import {
   MagnifyingGlassIcon,
   ShoppingBagIcon,
   TableCellsIcon,
-  IdentificationIcon
+  IdentificationIcon,
+  ArrowLeftOnRectangleIcon
 } from "@heroicons/react/24/outline";
 import { User } from "firebase/auth";
 import { 
@@ -35,7 +36,7 @@ import {
   increment,
   getDoc
 } from "firebase/firestore";
-import { db, getUserRole, UserRole } from "../lib/firebase";
+import { db, getUserRole, UserRole, logout } from "../lib/firebase";
 import { 
   GlassCard, 
   Badge, 
@@ -49,8 +50,10 @@ import {
 } from "../components/design-system/Primitive";
 import { useCart } from "../lib/cart-context";
 import { menuItems, MenuItem } from "../data/menu";
+import { useNavigate } from "react-router-dom";
 
 export const StaffPortal = ({ user }: { user: User | null }) => {
+  const navigate = useNavigate();
   const { cart, addToCart, updateQuantity, clearCart, totalAmount } = useCart();
   const [role, setRole] = useState<UserRole | null>(null);
   const [view, setView] = useState<'dashboard' | 'inventory' | 'orders' | 'accounting' | 'pos'>('dashboard');
@@ -148,6 +151,15 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type, visible: true });
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await logout();
+      navigate("/");
+    } catch (err) {
+      showToast("Sign out failed", "error");
+    }
   };
 
   const handlePrintReceipt = (order: any) => {
@@ -281,16 +293,23 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
           </div>
         </div>
         
-        <div className="p-4 lg:p-6 border-t border-white/5 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-gold/20 flex items-center justify-center text-gold font-bold shadow-xl border border-gold/10">{user?.email?.[0].toUpperCase()}</div>
-          <div className="overflow-hidden">
-            <p className="text-[10px] font-black text-white truncate">{user?.email}</p>
-            <p className="text-[7px] uppercase tracking-widest text-gold font-bold">Verified Operator</p>
+        <div className="p-4 lg:p-6 border-t border-white/5 space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-gold/20 flex items-center justify-center text-gold font-bold shadow-xl border border-gold/10">{user?.email?.[0].toUpperCase()}</div>
+            <div className="overflow-hidden text-left">
+              <p className="text-[10px] font-black text-white truncate">{user?.email}</p>
+              <p className="text-[7px] uppercase tracking-widest text-gold font-bold">Verified Operator</p>
+            </div>
           </div>
+          <button onClick={handleSignOut} className="w-full flex items-center gap-3 p-4 rounded-2xl bg-red-500/5 border border-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all group">
+            <ArrowLeftOnRectangleIcon className="w-5 h-5" />
+            <span className="text-[9px] font-black uppercase tracking-widest text-left">Terminate Session</span>
+          </button>
         </div>
       </aside>
 
       <main className="flex-1 overflow-y-auto p-6 lg:p-12 xl:p-16 space-y-10 no-scrollbar">
+...
         <header className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-10 pb-10 border-b border-white/5 relative">
           <div className="space-y-4">
             <h3 className="text-gold text-[10px] uppercase tracking-[0.6em] font-black opacity-40 flex items-center gap-3">

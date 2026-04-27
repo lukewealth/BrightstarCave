@@ -23,7 +23,8 @@ import {
   ArchiveBoxIcon,
   CloudArrowUpIcon,
   UserIcon,
-  CheckBadgeIcon
+  CheckBadgeIcon,
+  ArrowLeftOnRectangleIcon
 } from "@heroicons/react/24/outline";
 import { User, sendPasswordResetEmail } from "firebase/auth";
 import { 
@@ -40,7 +41,7 @@ import {
   where,
   addDoc
 } from "firebase/firestore";
-import { db, getUserRole, UserRole, auth, seedDatabaseFromJSON } from "../lib/firebase";
+import { db, getUserRole, UserRole, auth, seedDatabaseFromJSON, logout } from "../lib/firebase";
 import menuDataArchive from "../data/data.json";
 import { 
   GlassCard, 
@@ -54,8 +55,10 @@ import {
   TabSystem, 
   Toast 
 } from "../components/design-system/Primitive";
+import { useNavigate } from "react-router-dom";
 
 export const AdminPortal = ({ user }: { user: User | null }) => {
+  const navigate = useNavigate();
   const [role, setRole] = useState<UserRole | null>(null);
   const [view, setView] = useState<'dashboard' | 'inventory' | 'staff' | 'orders' | 'accounting' | 'menu'>('dashboard');
   const [orders, setOrders] = useState<any[]>([]);
@@ -126,6 +129,15 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
     if(window.confirm("CRITICAL: This will overwrite all Menu and Inventory definitions with JSON archive. Proceed?")) {
       await seedDatabaseFromJSON(menuDataArchive);
       showToast("System resources restored from archive");
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await logout();
+      navigate("/");
+    } catch (err) {
+      showToast("Sign out failed", "error");
     }
   };
 
@@ -242,10 +254,14 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
               ))}
             </nav>
           </div>
-          <div className="pt-6 border-t border-white/5">
+          <div className="pt-6 border-t border-white/5 space-y-4">
             <button onClick={handleRestoreArchive} className="w-full flex items-center gap-3 p-4 rounded-2xl bg-emerald/10 border border-emerald/20 text-emerald hover:bg-emerald hover:text-black transition-all group">
               <CloudArrowUpIcon className="w-5 h-5" />
               <span className="text-[9px] font-black uppercase tracking-widest">Factory Restore</span>
+            </button>
+            <button onClick={handleSignOut} className="w-full flex items-center gap-3 p-4 rounded-2xl bg-red-500/5 border border-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all group">
+              <ArrowLeftOnRectangleIcon className="w-5 h-5" />
+              <span className="text-[9px] font-black uppercase tracking-widest">Terminate Session</span>
             </button>
           </div>
         </div>

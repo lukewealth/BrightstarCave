@@ -129,3 +129,11 @@ export const loginWithEmail = async (email: string, password: string) => {
     throw error;
   }
 };
+
+export const logout = async () => {
+  try {
+    await auth.signOut();
+  } catch (error) {
+    throw error;
+  }
+};

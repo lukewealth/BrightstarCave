@@ -12,7 +12,8 @@ import {
   NoSymbolIcon,
   BanknotesIcon,
   BoltIcon,
-  InformationCircleIcon
+  InformationCircleIcon,
+  Square2StackIcon
 } from "@heroicons/react/24/outline";
 import { User } from "firebase/auth";
 import { 
@@ -203,6 +204,11 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
     });
   }, [displayMenu, activeTab, searchQuery]);
 
+  const handleCopyAccount = () => {
+    navigator.clipboard.writeText("5007071458");
+    showToast("Account number copied to clipboard");
+  };
+
   return (
     <div className="flex h-full bg-primary text-white overflow-hidden relative font-sans">
       <main className="flex-1 overflow-y-auto p-6 lg:p-12 space-y-8 no-scrollbar">
@@ -315,11 +321,32 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
             <div className="absolute top-0 left-0 w-full h-1 bg-white/5"><motion.div className="h-full bg-gold shadow-[0_0_15px_rgba(212,175,55,0.5)]" initial={{ width: "100%" }} animate={{ width: "0%" }} transition={{ duration: 60, ease: "linear" }} /></div>
             <ClockIcon className="w-14 h-14 text-gold animate-pulse mx-auto opacity-60" />
             <div className="space-y-2"><p className="text-4xl font-serif text-white font-black">{timeLeft}s</p><p className="text-[9px] uppercase tracking-[0.4em] text-gold font-black">Audit Window Active</p></div>
-            <div className="space-y-4 pt-6 border-t border-white/5 text-left">
-              <div className="flex justify-between"><span className="text-[9px] text-silver uppercase font-bold tracking-widest">Bank Identifier</span><span className="text-[10px] text-gold font-black tracking-widest">MONIEPOINT 5007071458</span></div>
-              <div className="flex justify-between"><span className="text-[9px] text-silver uppercase font-bold tracking-widest">Verified Value</span><span className="text-xl text-white font-serif font-black">₦{totalAmount.toLocaleString()}</span></div>
+            
+            <div className="space-y-6 pt-6 border-t border-white/5">
+              <div className="bg-black/40 rounded-2xl p-6 border border-white/10 space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-[9px] text-silver uppercase font-bold tracking-[0.2em]">Bank Institution</span>
+                  <span className="text-sm text-white font-serif tracking-widest">MONIEPOINT</span>
+                </div>
+                <div 
+                  className="flex justify-between items-center cursor-pointer group hover:bg-gold/5 p-2 -m-2 rounded-xl transition-all"
+                  onClick={handleCopyAccount}
+                >
+                  <span className="text-[9px] text-silver uppercase font-bold tracking-[0.2em]">Account Number</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl text-gold font-mono font-black tracking-tighter">5007071458</span>
+                    <Square2StackIcon className="w-4 h-4 text-gold/40 group-hover:text-gold transition-colors" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-end px-2">
+                <span className="text-[9px] text-silver uppercase font-bold tracking-[0.2em]">Verified Value</span>
+                <span className="text-3xl text-white font-serif font-black">₦{totalAmount.toLocaleString()}</span>
+              </div>
             </div>
           </div>
+
           <div className="grid grid-cols-2 gap-4">
             <button onClick={() => handleCancelOrder()} className="py-5 rounded-2xl bg-white/5 border border-white/10 text-silver hover:text-red-400 transition-all uppercase text-[9px] font-black tracking-widest">Discard Record</button>
             <EmeraldButton onClick={handleConfirmPayment} className="py-5" disabled={isSubmitting}><span className="text-[9px] uppercase font-black tracking-widest">Authorize Paid</span></EmeraldButton>

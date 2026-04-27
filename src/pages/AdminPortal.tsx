@@ -229,7 +229,7 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
       <div className="h-full flex items-center justify-center bg-primary p-6 lg:p-20 text-center">
         <GlassCard className="p-12 space-y-6 max-w-lg">
           <ExclamationTriangleIcon className="w-16 h-16 text-gold mx-auto animate-pulse" />
-          <h2 className="text-3xl font-serif text-white uppercase tracking-widest">Access Restricted</h2>
+          <h2 className="text-3xl font-serif text-primary uppercase tracking-widest">Access Restricted</h2>
           <p className="text-silver opacity-60">System protocols require administrative clearance.</p>
         </GlassCard>
       </div>
@@ -237,7 +237,7 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row h-full bg-primary font-sans text-white overflow-hidden">
+    <div className="flex flex-col lg:flex-row h-full bg-primary font-sans text-primary overflow-hidden">
       <aside className={`fixed lg:relative inset-y-0 left-0 w-72 lg:w-80 border-r border-white/[0.03] bg-black/40 p-8 lg:p-10 flex flex-col justify-between backdrop-blur-3xl z-[100] transition-transform duration-500 lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="space-y-12">
           <div className="px-2">
@@ -259,7 +259,7 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
               <CloudArrowUpIcon className="w-5 h-5" />
               <span className="text-[9px] font-black uppercase tracking-widest">Factory Restore</span>
             </button>
-            <button onClick={handleSignOut} className="w-full flex items-center gap-3 p-4 rounded-2xl bg-red-500/5 border border-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all group">
+            <button onClick={handleSignOut} className="w-full flex items-center gap-3 p-4 rounded-2xl bg-red-500/5 border border-red-500/10 text-red-400 hover:bg-red-500 hover:text-primary transition-all group">
               <ArrowLeftOnRectangleIcon className="w-5 h-5" />
               <span className="text-[9px] font-black uppercase tracking-widest">Terminate Session</span>
             </button>
@@ -271,7 +271,7 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
         <header className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-8 pb-8 border-b border-white/5">
           <div className="space-y-3">
             <h3 className="text-gold text-[9px] uppercase tracking-[0.6em] font-black opacity-60">Admin Protocol v9.2</h3>
-            <h2 className="text-4xl xl:text-5xl font-serif text-white tracking-tighter uppercase">{view}</h2>
+            <h2 className="text-4xl xl:text-5xl font-serif text-primary tracking-tighter uppercase">{view}</h2>
           </div>
           <div className="flex gap-6">
             <div className="xl:text-right">
@@ -280,7 +280,7 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
             </div>
             <div className="xl:text-right border-l border-white/10 pl-6">
               <p className="text-[8px] uppercase tracking-widest text-silver mb-1 opacity-60">Active Queue</p>
-              <p className="text-2xl lg:text-3xl font-serif text-white font-black">{stats.activeOrders}</p>
+              <p className="text-2xl lg:text-3xl font-serif text-primary font-black">{stats.activeOrders}</p>
             </div>
           </div>
         </header>
@@ -317,7 +317,7 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
               {inventory.map((item) => (
                 <tr key={item.id} className="group hover:bg-white/[0.02] border-b border-white/[0.02]">
                   <td className="px-6 py-5">
-                    <p className="text-sm font-bold text-white leading-none uppercase tracking-wide">{item.name}</p>
+                    <p className="text-sm font-bold text-primary leading-none uppercase tracking-wide">{item.name}</p>
                   </td>
                   <td className="px-6 py-5">
                     <Badge color="silver">{item.category}</Badge>
@@ -339,8 +339,8 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {menuItems.map((item) => (
                 <GlassCard key={item.id} className="p-8 space-y-6 border-white/5 hover:border-gold/30 transition-all group">
-                  <div className="flex justify-between items-start"><Badge color="gold">{item.category}</Badge><p className="text-xl font-serif text-white font-black">₦{item.price.toLocaleString()}</p></div>
-                  <div className="space-y-2"><h4 className="text-xl font-bold text-white group-hover:text-gold transition-colors leading-tight">{item.name}</h4><p className="text-[10px] text-silver/60 line-clamp-3 leading-relaxed">{item.description}</p></div>
+                  <div className="flex justify-between items-start"><Badge color="gold">{item.category}</Badge><p className="text-xl font-serif text-primary font-black">₦{item.price.toLocaleString()}</p></div>
+                  <div className="space-y-2"><h4 className="text-xl font-bold text-primary group-hover:text-gold transition-colors leading-tight">{item.name}</h4><p className="text-[10px] text-silver/60 line-clamp-3 leading-relaxed">{item.description}</p></div>
                   <div className="flex gap-4 pt-6 border-t border-white/5">
                     <button onClick={() => { setSelectedItem(item); setModalType('menu'); setIsModalOpen(true); }} className="flex-1 py-3 text-[9px] uppercase font-black tracking-widest text-silver hover:text-gold border border-white/10 rounded-2xl transition-all">Configure</button>
                     <button onClick={async () => { if(window.confirm("Purge resource?")) { await deleteDoc(doc(db, "menu", item.id)); await deleteDoc(doc(db, "inventory", item.id)); showToast("Resource purged"); } }} className="p-3 text-red-400/20 hover:text-red-400 hover:bg-red-400/10 rounded-2xl transition-all"><TrashIcon className="w-5 h-5" /></button>
@@ -358,7 +358,7 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
               {staff.map((member) => (
                 <GlassCard key={member.id} className="p-8 space-y-6 border-white/5 group">
                   <div className="flex justify-between items-start"><div className="w-14 h-14 rounded-2xl bg-black border border-white/10 flex items-center justify-center text-gold font-bold text-2xl shadow-2xl uppercase">{member.email?.[0]}</div><Badge color={member.role === 'admin' ? 'gold' : member.role === 'staff_bar' ? 'purple' : 'emerald'}>{member.role.replace('_', ' ').toUpperCase()}</Badge></div>
-                  <div className="space-y-1"><p className="text-sm font-bold text-white truncate tracking-widest">{member.email}</p><p className="text-[8px] uppercase tracking-[0.3em] text-silver/40 font-black">Operator Key: {member.id.slice(-8)}</p></div>
+                  <div className="space-y-1"><p className="text-sm font-bold text-primary truncate tracking-widest">{member.email}</p><p className="text-[8px] uppercase tracking-[0.3em] text-silver/40 font-black">Operator Key: {member.id.slice(-8)}</p></div>
                   <div className="flex gap-4 pt-6 border-t border-white/5">
                     <button onClick={() => { setSelectedItem(member); setModalType('staff'); setIsModalOpen(true); }} className="flex-1 py-3 text-[9px] uppercase font-black tracking-widest text-silver hover:text-gold border border-white/10 rounded-2xl transition-all">Credentials</button>
                     <button onClick={async () => { if(window.confirm("Revoke access?")) { await deleteDoc(doc(db, "admins", member.id)); showToast("Access revoked"); } }} className="p-3 text-red-400/20 hover:text-red-400 rounded-2xl transition-all"><TrashIcon className="w-5 h-5" /></button>
@@ -375,9 +375,9 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
               <LuxuryTable headers={['Audit Ref', 'Timestamp', 'Operator', 'Value', 'Status']}>
                 {orders.filter(o => o.status === 'paid').map((order) => (
                   <tr key={order.id} className="group hover:bg-white/[0.02] border-b border-white/[0.02]">
-                    <td className="px-8 py-6 text-xs text-white font-black uppercase tracking-tighter">{order.id.slice(-10)}</td>
+                    <td className="px-8 py-6 text-xs text-primary font-black uppercase tracking-tighter">{order.id.slice(-10)}</td>
                     <td className="px-8 py-6 text-[10px] text-silver font-mono">{order.formattedDate} {order.formattedTime}</td>
-                    <td className="px-8 py-6"><div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-emerald shadow-[0_0_10px_#10b981]" /><p className="text-[10px] text-white font-black uppercase">{order.staffName || "System"}</p></div></td>
+                    <td className="px-8 py-6"><div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-emerald shadow-[0_0_10px_#10b981]" /><p className="text-[10px] text-primary font-black uppercase">{order.staffName || "System"}</p></div></td>
                     <td className="px-8 py-6 font-serif text-gold font-black">₦{order.total?.toLocaleString()}</td>
                     <td className="px-8 py-6"><Badge color="emerald">AUDITED</Badge></td>
                   </tr>
@@ -392,7 +392,7 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
           {modalType === 'staff' && (
             <form onSubmit={handleUpdateStaff} className="space-y-6">
               <div className="space-y-2"><label className="text-[10px] uppercase font-black text-silver">Email Identity</label><SilverInput icon={EnvelopeIcon} placeholder="Operator authentication email" value={selectedItem?.email || ''} onChange={(e: any) => setSelectedItem({ ...selectedItem, email: e.target.value })} /></div>
-              <div className="space-y-2"><label className="text-[10px] uppercase font-black text-silver">Protocol Role</label><select value={selectedItem?.role || 'staff_waiter'} onChange={(e) => setSelectedItem({ ...selectedItem, role: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white focus:outline-none focus:border-gold/30"><option value="staff_waiter">Kitchen Operator (Waiter)</option><option value="staff_bar">Bar Operator (Liquid)</option><option value="admin">Global Protocol (Super Admin)</option></select></div>
+              <div className="space-y-2"><label className="text-[10px] uppercase font-black text-silver">Protocol Role</label><select value={selectedItem?.role || 'staff_waiter'} onChange={(e) => setSelectedItem({ ...selectedItem, role: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-primary focus:outline-none focus:border-gold/30"><option value="staff_waiter">Kitchen Operator (Waiter)</option><option value="staff_bar">Bar Operator (Liquid)</option><option value="admin">Global Protocol (Super Admin)</option></select></div>
               <GoldButton type="submit" className="w-full py-5 text-[11px] uppercase tracking-[0.2em]">{selectedItem?.id ? 'Authorize Update' : 'Initialize Onboarding'}</GoldButton>
             </form>
           )}
@@ -404,11 +404,11 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
                 <div className="space-y-2"><label className="text-[10px] uppercase font-black text-silver">Credit Value (₦)</label><SilverInput type="number" placeholder="Price" value={selectedItem?.price || 0} onChange={(e: any) => setSelectedItem({ ...selectedItem, price: e.target.value })} /></div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><label className="text-[10px] uppercase font-black text-silver">Category Registry</label><select value={selectedItem?.category || 'Bar'} onChange={(e) => setSelectedItem({ ...selectedItem, category: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white focus:outline-none"><option value="Bar">Bar</option><option value="Kitchen Menu">Kitchen Menu</option><option value="Exotic Kitchen">Exotic Kitchen</option><option value="Mocktails">Mocktails</option><option value="Cocktails">Cocktails</option><option value="Whiskey">Whiskey</option><option value="Tequila">Tequila</option><option value="Wine">Wine</option><option value="Beer">Beer</option><option value="Soft Drinks">Soft Drinks</option><option value="Apartments">Apartments</option><option value="Leisure">Leisure</option></select></div>
+                <div className="space-y-2"><label className="text-[10px] uppercase font-black text-silver">Category Registry</label><select value={selectedItem?.category || 'Bar'} onChange={(e) => setSelectedItem({ ...selectedItem, category: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-primary focus:outline-none"><option value="Bar">Bar</option><option value="Kitchen Menu">Kitchen Menu</option><option value="Exotic Kitchen">Exotic Kitchen</option><option value="Mocktails">Mocktails</option><option value="Cocktails">Cocktails</option><option value="Whiskey">Whiskey</option><option value="Tequila">Tequila</option><option value="Wine">Wine</option><option value="Beer">Beer</option><option value="Soft Drinks">Soft Drinks</option><option value="Apartments">Apartments</option><option value="Leisure">Leisure</option></select></div>
                 <div className="space-y-2"><label className="text-[10px] uppercase font-black text-silver">Initial Availability</label><SilverInput type="number" placeholder="Stock" value={selectedItem?.stock || 0} onChange={(e: any) => setSelectedItem({ ...selectedItem, stock: e.target.value })} /></div>
               </div>
-              <div className="space-y-2"><label className="text-[10px] uppercase font-black text-silver">Resource Type</label><select value={selectedItem?.type || 'bar'} onChange={(e) => setSelectedItem({ ...selectedItem, type: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white focus:outline-none"><option value="bar">Bar (Beverage)</option><option value="kitchen">Kitchen (Food)</option><option value="hotel">Stay (Apartments)</option></select></div>
-              <div className="space-y-2"><label className="text-[10px] uppercase font-black text-silver">Luxury Description</label><textarea placeholder="Specify resource characteristics..." value={selectedItem?.description || ''} onChange={(e) => setSelectedItem({ ...selectedItem, description: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm text-white h-24 focus:outline-none" /></div>
+              <div className="space-y-2"><label className="text-[10px] uppercase font-black text-silver">Resource Type</label><select value={selectedItem?.type || 'bar'} onChange={(e) => setSelectedItem({ ...selectedItem, type: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-primary focus:outline-none"><option value="bar">Bar (Beverage)</option><option value="kitchen">Kitchen (Food)</option><option value="hotel">Stay (Apartments)</option></select></div>
+              <div className="space-y-2"><label className="text-[10px] uppercase font-black text-silver">Luxury Description</label><textarea placeholder="Specify resource characteristics..." value={selectedItem?.description || ''} onChange={(e) => setSelectedItem({ ...selectedItem, description: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm text-primary h-24 focus:outline-none" /></div>
               <GoldButton type="submit" className="w-full py-5 text-[11px] uppercase tracking-[0.2em]">{selectedItem?.id ? 'Authorize Resource Update' : 'Initialize Resource Transmission'}</GoldButton>
             </form>
           )}
@@ -417,7 +417,7 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
             <form onSubmit={handleUpdateInventory} className="space-y-6 text-center">
               <div className="p-8 bg-black/40 rounded-[32px] border border-white/5 space-y-4">
                  <p className="text-[10px] uppercase font-black text-gold tracking-[0.5em]">Resource Adjustment</p>
-                 <h4 className="text-2xl font-serif text-white">{selectedItem?.name}</h4>
+                 <h4 className="text-2xl font-serif text-primary">{selectedItem?.name}</h4>
               </div>
               <div className="space-y-2 text-left"><label className="text-[10px] uppercase font-black text-silver ml-4">Authorized Availability Count</label><SilverInput type="number" placeholder="Adjust Stock" value={selectedItem?.stock || 0} onChange={(e: any) => setSelectedItem({ ...selectedItem, stock: e.target.value })} /></div>
               <GoldButton type="submit" className="w-full py-5 text-[11px] uppercase tracking-[0.2em]">Confirm Inventory Audit</GoldButton>

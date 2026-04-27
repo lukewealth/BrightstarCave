@@ -75,7 +75,8 @@
 
   .glass-card {
     background: var(--glass-bg);
-    @apply backdrop-blur-2xl border border-white/[0.05];
+    backdrop-filter: blur(40px);
+    border: 1px solid var(--border-color);
   }
 
   /* Active/Hover Inversion Logic */

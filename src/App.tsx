@@ -50,10 +50,14 @@ function App() {
     return unsub;
   }, []);
 
+  useEffect(() => {
+    document.documentElement.classList.toggle("light", theme === "light");
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
   const toggleTheme = () => {
     const next = theme === "dark" ? "light" : "dark";
     setTheme(next);
-    localStorage.setItem("theme", next);
   };
 
   if (loading) return null;
@@ -61,29 +65,27 @@ function App() {
   return (
     <CartProvider>
       <BrowserRouter>
-        <div className={theme}>
-          <Layout user={user} role={role} theme={theme} toggleTheme={toggleTheme}>
-            <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/about" element={<AboutUsPage />} />
-              <Route path="/orders" element={<OrderingPage user={user} />} />
-              <Route path="/service-policy" element={<ServicePolicy />} />
-              <Route path="/data-protection" element={<DataProtection />} />
-              
-              <Route path="/admin" element={
-                <AuthGuard user={user} role={role} allowedRoles={['admin']}>
-                  <AdminPortal user={user} />
-                </AuthGuard>
-              } />
+        <Layout user={user} role={role} theme={theme} toggleTheme={toggleTheme}>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/about" element={<AboutUsPage />} />
+            <Route path="/orders" element={<OrderingPage user={user} />} />
+            <Route path="/service-policy" element={<ServicePolicy />} />
+            <Route path="/data-protection" element={<DataProtection />} />
+            
+            <Route path="/admin" element={
+              <AuthGuard user={user} role={role} allowedRoles={['admin']}>
+                <AdminPortal user={user} />
+              </AuthGuard>
+            } />
 
-              <Route path="/staff" element={
-                <AuthGuard user={user} role={role} allowedRoles={['admin', 'staff', 'staff_bar', 'staff_waiter']}>
-                  <StaffPortal user={user} />
-                </AuthGuard>
-              } />
-            </Routes>
-          </Layout>
-        </div>
+            <Route path="/staff" element={
+              <AuthGuard user={user} role={role} allowedRoles={['admin', 'staff', 'staff_bar', 'staff_waiter']}>
+                <StaffPortal user={user} />
+              </AuthGuard>
+            } />
+          </Routes>
+        </Layout>
       </BrowserRouter>
     </CartProvider>
   );

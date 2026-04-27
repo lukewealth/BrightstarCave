@@ -38,7 +38,7 @@ export const AboutUsPage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="text-4xl xs:text-5xl lg:text-8xl font-serif text-white tracking-tight"
+          className="text-4xl xs:text-5xl lg:text-8xl font-serif text-primary tracking-tight"
         >
           The Brightstar Story
         </motion.h2>
@@ -70,18 +70,18 @@ export const AboutUsPage = () => {
         <div className="absolute bottom-6 lg:bottom-10 left-6 lg:left-10 right-6 lg:right-10 flex justify-between items-end z-20">
           <div className="space-y-1 lg:space-y-2">
             <span className="text-[8px] lg:text-[10px] uppercase tracking-[0.3em] lg:tracking-[0.4em] text-emerald font-bold">Gallery Archive</span>
-            <h4 className="text-xl lg:text-2xl font-serif text-white">Atmospheric Transmission</h4>
+            <h4 className="text-xl lg:text-2xl font-serif text-primary">Atmospheric Transmission</h4>
           </div>
           <div className="flex gap-2 lg:gap-4">
             <button 
               onClick={() => setCurrentImage((prev) => (prev - 1 + aboutImages.length) % aboutImages.length)}
-              className="p-2 lg:p-3 rounded-full border border-white/10 text-white hover:bg-emerald hover:text-black transition-all"
+              className="p-2 lg:p-3 rounded-full border border-white/10 text-primary hover:bg-emerald hover:text-black transition-all"
             >
               <ChevronLeft size={16} className="lg:w-5 lg:h-5" />
             </button>
             <button 
               onClick={() => setCurrentImage((prev) => (prev + 1) % aboutImages.length)}
-              className="p-2 lg:p-3 rounded-full border border-white/10 text-white hover:bg-emerald hover:text-black transition-all"
+              className="p-2 lg:p-3 rounded-full border border-white/10 text-primary hover:bg-emerald hover:text-black transition-all"
             >
               <ChevronRight size={16} className="lg:w-5 lg:h-5" />
             </button>
@@ -101,12 +101,12 @@ export const AboutUsPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
         <div className="space-y-6 lg:space-y-8 text-secondary leading-relaxed text-base lg:text-lg font-light">
           <p>
-            Founded in 1994, <span className="text-white font-medium italic">Brightstar Cave</span> emerged as a sanctuary for those who appreciate the intersection of African soul and Asian precision. 
+            Founded in 1994, <span className="text-primary font-medium italic">Brightstar Cave</span> emerged as a sanctuary for those who appreciate the intersection of African soul and Asian precision. 
           </p>
           <p>
             What began as an intimate lounge has evolved into a global benchmark for luxury hospitality. We believe that true sanctuary is found where the elements align—Metals and Nature in a deliberate, beautiful dialogue.
           </p>
-          <div className="pt-6 lg:pt-8 border-l-2 border-emerald pl-6 lg:pl-8 italic text-xl lg:text-2xl text-white font-serif leading-relaxed">
+          <div className="pt-6 lg:pt-8 border-l-2 border-emerald pl-6 lg:pl-8 italic text-xl lg:text-2xl text-primary font-serif leading-relaxed">
             "Every transmission, every sip, every rest is a story of distant shores and local heart."
           </div>
         </div>
@@ -139,7 +139,7 @@ export const AboutUsPage = () => {
       <section className="pt-16 lg:pt-24 space-y-10 lg:space-y-12">
         <div className="flex items-center gap-4">
           <ShieldCheck className="text-emerald" size={24} />
-          <h3 className="text-xl lg:text-2xl font-serif text-white uppercase tracking-widest">Connect with the Cave</h3>
+          <h3 className="text-xl lg:text-2xl font-serif text-primary uppercase tracking-widest">Connect with the Cave</h3>
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
@@ -153,7 +153,7 @@ export const AboutUsPage = () => {
               </div>
               <div>
                 <h5 className="text-[9px] lg:text-[10px] uppercase tracking-[0.3em] lg:tracking-[0.4em] text-secondary font-black mb-1 lg:mb-2">Location Terminal</h5>
-                <p className="text-white text-base lg:text-lg font-light leading-relaxed">
+                <p className="text-primary text-base lg:text-lg font-light leading-relaxed">
                   Road 3C Ogunfayo, <br />
                   between Blenco/Limitless, <br />
                   Lagos, Nigeria
@@ -167,7 +167,7 @@ export const AboutUsPage = () => {
               </div>
               <div>
                 <h5 className="text-[9px] lg:text-[10px] uppercase tracking-[0.3em] lg:tracking-[0.4em] text-secondary font-black mb-1 lg:mb-2">Voice Frequency</h5>
-                <p className="text-white text-lg lg:text-xl font-mono font-bold">09168858844</p>
+                <p className="text-primary text-lg lg:text-xl font-mono font-bold">09168858844</p>
                 <p className="text-[9px] text-emerald/60 uppercase tracking-widest mt-1">Reservations Preferred</p>
               </div>
             </div>

@@ -72,7 +72,7 @@ export const LoginPopup = ({ isOpen, onClose }: LoginPopupProps) => {
                   className="space-y-10"
                 >
                   <div className="text-center">
-                    <h2 className="text-3xl lg:text-4xl font-serif text-white uppercase tracking-tight">Identity Registry</h2>
+                    <h2 className="text-3xl lg:text-4xl font-serif text-primary uppercase tracking-tight">Identity Registry</h2>
                     <p className="text-silver/40 text-[10px] lg:text-[11px] uppercase tracking-[0.4em] mt-3 font-black">Define Your Protocol Baseline</p>
                   </div>
 
@@ -86,7 +86,7 @@ export const LoginPopup = ({ isOpen, onClose }: LoginPopupProps) => {
                           <UserCircle size={28} />
                         </div>
                         <div>
-                          <h4 className="text-lg font-bold text-white uppercase">Guest Entry</h4>
+                          <h4 className="text-lg font-bold text-primary uppercase">Guest Entry</h4>
                           <p className="text-[10px] text-silver/40 uppercase tracking-widest mt-1">Luxury Gastronomy Access</p>
                         </div>
                       </div>
@@ -102,7 +102,7 @@ export const LoginPopup = ({ isOpen, onClose }: LoginPopupProps) => {
                           <ShieldCheck size={28} />
                         </div>
                         <div>
-                          <h4 className="text-lg font-bold text-white uppercase">Operational Staff</h4>
+                          <h4 className="text-lg font-bold text-primary uppercase">Operational Staff</h4>
                           <p className="text-[10px] text-silver/40 uppercase tracking-widest mt-1">Fleet Management Terminal</p>
                         </div>
                       </div>
@@ -131,7 +131,7 @@ export const LoginPopup = ({ isOpen, onClose }: LoginPopupProps) => {
                         className={`absolute inset-0 rounded-full blur-xl ${role === 'guest' ? 'bg-gold' : 'bg-emerald'}`}
                       />
                     </div>
-                    <h2 className="text-2xl lg:text-3xl font-serif text-white uppercase tracking-tight">
+                    <h2 className="text-2xl lg:text-3xl font-serif text-primary uppercase tracking-tight">
                       {role === 'guest' ? 'Guest Welcome' : 'Operational Login'}
                     </h2>
                   </div>
@@ -148,7 +148,7 @@ export const LoginPopup = ({ isOpen, onClose }: LoginPopupProps) => {
                               value={email}
                               onChange={(e) => setEmail(e.target.value)}
                               placeholder="clearance@brightstar.cave"
-                              className="w-full bg-primary/50 border border-white/5 rounded-2xl py-5 pl-14 pr-6 text-sm text-white focus:border-emerald/30 outline-none transition-all placeholder:text-white/5"
+                              className="w-full bg-primary/50 border border-white/5 rounded-2xl py-5 pl-14 pr-6 text-sm text-primary focus:border-emerald/30 outline-none transition-all placeholder:text-primary/5"
                               required
                             />
                           </div>
@@ -162,7 +162,7 @@ export const LoginPopup = ({ isOpen, onClose }: LoginPopupProps) => {
                               value={password}
                               onChange={(e) => setPassword(e.target.value)}
                               placeholder="••••••••"
-                              className="w-full bg-primary/50 border border-white/5 rounded-2xl py-5 pl-14 pr-6 text-sm text-white focus:border-emerald/30 outline-none transition-all placeholder:text-white/5"
+                              className="w-full bg-primary/50 border border-white/5 rounded-2xl py-5 pl-14 pr-6 text-sm text-primary focus:border-emerald/30 outline-none transition-all placeholder:text-primary/5"
                               required
                             />
                           </div>

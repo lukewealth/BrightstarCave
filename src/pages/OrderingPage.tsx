@@ -220,7 +220,7 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
   }, [role]);
 
   return (
-    <div className="flex h-full bg-primary text-white overflow-hidden relative font-sans">
+    <div className="flex h-full bg-primary text-primary overflow-hidden relative font-sans">
       <main className="flex-1 overflow-y-auto p-6 lg:p-12 space-y-8 no-scrollbar">
         <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
           <div className="space-y-3">
@@ -249,7 +249,7 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
                   <p className="font-serif text-gold text-xl font-black">₦{item.price.toLocaleString()}</p>
                 </div>
                 <div className="space-y-2">
-                  <h4 className="text-xl font-serif text-white group-hover:text-gold transition-colors leading-tight uppercase tracking-wide">{item.name}</h4>
+                  <h4 className="text-xl font-serif text-primary group-hover:text-gold transition-colors leading-tight uppercase tracking-wide">{item.name}</h4>
                   <p className="text-[10px] text-silver/40 uppercase tracking-widest font-black">{item.category}</p>
                 </div>
                 <p className="text-[11px] text-silver/60 leading-relaxed font-light italic border-l border-gold/20 pl-4">{item.description}</p>
@@ -269,20 +269,20 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
         {isCartOpen && (
           <motion.aside initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} className="fixed lg:relative right-0 top-0 bottom-0 w-full sm:w-[450px] border-l border-white/5 bg-black/40 backdrop-blur-3xl p-8 lg:p-10 flex flex-col z-[100]">
             <header className="mb-10 flex justify-between items-center border-b border-white/5 pb-8">
-              <h3 className="text-xs font-black uppercase tracking-[0.4em] text-white flex items-center gap-4"><ShoppingBagIcon className="w-5 h-5 text-gold" /> Dispatch Queue</h3>
-              <button onClick={() => setIsCartOpen(false)}><XMarkIcon className="w-6 h-6 text-silver hover:text-white transition-colors" /></button>
+              <h3 className="text-xs font-black uppercase tracking-[0.4em] text-primary flex items-center gap-4"><ShoppingBagIcon className="w-5 h-5 text-gold" /> Dispatch Queue</h3>
+              <button onClick={() => setIsCartOpen(false)}><XMarkIcon className="w-6 h-6 text-silver hover:text-primary transition-colors" /></button>
             </header>
             <div className="flex-1 overflow-y-auto space-y-4 no-scrollbar">
               {cart.map((item) => (
                 <div key={item.id} className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl flex justify-between items-center group hover:bg-white/[0.05] transition-all">
                   <div className="space-y-1">
-                    <p className="text-sm font-bold text-white uppercase">{item.name}</p>
+                    <p className="text-sm font-bold text-primary uppercase">{item.name}</p>
                     <p className="text-[9px] text-gold font-mono tracking-widest">₦{(item.price * item.quantity).toLocaleString()}</p>
                   </div>
                   <div className="flex items-center gap-4 bg-black/40 rounded-xl px-3 py-1.5 border border-white/5">
-                    <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="text-gold hover:text-white transition-colors">-</button>
-                    <span className="text-[10px] font-black text-white w-4 text-center">{item.quantity}</span>
-                    <button onClick={() => { if(item.quantity < (displayMenu.find(m => m.id === item.id)?.stock || 0)) updateQuantity(item.id, item.quantity + 1); else showToast("Audit limit reached", "error"); }} className="text-gold hover:text-white transition-colors">+</button>
+                    <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="text-gold hover:text-primary transition-colors">-</button>
+                    <span className="text-[10px] font-black text-primary w-4 text-center">{item.quantity}</span>
+                    <button onClick={() => { if(item.quantity < (displayMenu.find(m => m.id === item.id)?.stock || 0)) updateQuantity(item.id, item.quantity + 1); else showToast("Audit limit reached", "error"); }} className="text-gold hover:text-primary transition-colors">+</button>
                   </div>
                 </div>
               ))}
@@ -301,10 +301,10 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
                     <select 
                       value={selectedStaff?.id || ""}
                       onChange={(e) => setSelectedStaff(staffList.find(s => s.id === e.target.value))} 
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-[10px] text-white focus:border-gold/40 uppercase tracking-widest outline-none appearance-none"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-[10px] text-primary focus:border-gold/40 uppercase tracking-widest outline-none appearance-none"
                     >
                       <option value="" className="bg-primary">Select Authorized Staff</option>
-                      {staffList.map(s => <option key={s.id} value={s.id} className="bg-primary text-white">{s.email.split('@')[0].toUpperCase()} - {s.role.split('_')[1]?.toUpperCase() || 'GENERAL'}</option>)}
+                      {staffList.map(s => <option key={s.id} value={s.id} className="bg-primary text-primary">{s.email.split('@')[0].toUpperCase()} - {s.role.split('_')[1]?.toUpperCase() || 'GENERAL'}</option>)}
                     </select>
                   </div>
                 )}
@@ -328,14 +328,14 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
               />
             </div>
             <ClockIcon className="w-14 h-14 text-gold animate-pulse mx-auto opacity-60" />
-            <div className="space-y-2"><p className="text-4xl font-serif text-white font-black">Audit Active</p><p className="text-[9px] uppercase tracking-[0.4em] text-gold font-black">Waiting for Settlement Proof</p></div>
+            <div className="space-y-2"><p className="text-4xl font-serif text-primary font-black">Audit Active</p><p className="text-[9px] uppercase tracking-[0.4em] text-gold font-black">Waiting for Settlement Proof</p></div>
             <div className="space-y-4 pt-6 border-t border-white/5 text-left">
               <div className="flex justify-between"><span className="text-[9px] text-silver uppercase font-bold tracking-widest">Bank Identifier</span><span className="text-[10px] text-gold font-black tracking-widest">MONIEPOINT 5007071458</span></div>
-              <div className="flex justify-between"><span className="text-[9px] text-silver uppercase font-bold tracking-widest">Verified Value</span><span className="text-xl text-white font-serif font-black">₦{totalAmount.toLocaleString()}</span></div>
+              <div className="flex justify-between"><span className="text-[9px] text-silver uppercase font-bold tracking-widest">Verified Value</span><span className="text-xl text-primary font-serif font-black">₦{totalAmount.toLocaleString()}</span></div>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <button onClick={() => setShowCheckout(false)} className="py-5 rounded-2xl bg-white/5 border border-white/10 text-silver hover:text-white transition-all uppercase text-[9px] font-black tracking-widest">Back to Cart</button>
+            <button onClick={() => setShowCheckout(false)} className="py-5 rounded-2xl bg-white/5 border border-white/10 text-silver hover:text-primary transition-all uppercase text-[9px] font-black tracking-widest">Back to Cart</button>
             <EmeraldButton onClick={handleConfirmPayment} className="py-5" disabled={isSubmitting}><span className="text-[9px] uppercase font-black tracking-widest">Authorize Paid</span></EmeraldButton>
           </div>
           <button onClick={() => handleCancelOrder()} className="w-full py-4 text-red-500/40 hover:text-red-500 transition-all uppercase text-[8px] font-black tracking-[0.4em]">Discard & Purge Record</button>

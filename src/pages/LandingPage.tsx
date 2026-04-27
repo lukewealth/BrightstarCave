@@ -301,7 +301,7 @@ export const LandingPage = () => {
             
             <div className="absolute bottom-6 lg:bottom-10 left-6 lg:left-10 z-20">
               <p className="text-emerald font-mono text-[8px] lg:text-[10px] tracking-[0.4em] mb-2 uppercase font-bold">ELEMENTAL FEED</p>
-              <h3 className="text-xl lg:text-2xl font-serif text-white uppercase tracking-widest">Vibe Synchronization</h3>
+              <h3 className="text-xl lg:text-2xl font-serif text-primary uppercase tracking-widest">Vibe Synchronization</h3>
             </div>
 
             <div className="absolute bottom-6 lg:bottom-10 right-6 lg:right-10 z-20 flex gap-2">
@@ -381,7 +381,7 @@ export const LandingPage = () => {
 
               <div className="absolute bottom-0 left-0 p-8 lg:p-12 w-full">
                 <span className="text-silver text-[8px] lg:text-[10px] font-bold tracking-[0.4em] uppercase mb-2 lg:mb-3 block">{feature.category}</span>
-                <h4 className="text-2xl lg:text-4xl font-serif text-white mb-4">{feature.title}</h4>
+                <h4 className="text-2xl lg:text-4xl font-serif text-primary mb-4">{feature.title}</h4>
                 <div className="flex items-center gap-3 text-silver text-[9px] lg:text-[10px] font-bold uppercase tracking-widest translate-y-4 lg:translate-y-10 opacity-100 lg:opacity-0 lg:group-hover:translate-y-0 lg:group-hover:opacity-100 transition-all duration-500">
                   Access Protocol <ArrowRight size={14} />
                 </div>

@@ -109,11 +109,6 @@ export const OptimizedImage = ({
 
     return () => {
       isMounted.current = false;
-      if (displaySrc && displaySrc.startsWith("blob:")) {
-        // We don't always want to revoke if it's cached, 
-        // but for safety in memory management:
-        // URL.revokeObjectURL(displaySrc);
-      }
     };
   }, [src]);
 
@@ -163,7 +158,7 @@ export const GlassCard = ({ children, className = "", onClick }: PrimitiveProps)
   <motion.div 
     whileHover={onClick ? { scale: 1.01, borderColor: "rgba(212, 175, 55, 0.3)" } : {}}
     onClick={onClick}
-    className={`bg-secondary/40 backdrop-blur-xl border border-white/5 rounded-[24px] lg:rounded-[32px] overflow-hidden ${onClick ? 'cursor-pointer' : ''} ${className}`}
+    className={`glass-card overflow-hidden ${onClick ? 'cursor-pointer' : ''} ${className}`}
   >
     {children}
   </motion.div>
@@ -207,7 +202,7 @@ export const SilverInput = ({ placeholder, value, onChange, type = "text", class
       placeholder={placeholder}
       value={value}
       onChange={onChange}
-      className={`w-full bg-white/5 border border-white/10 rounded-xl lg:rounded-2xl py-3 lg:py-3.5 ${Icon ? 'pl-11 lg:pl-12' : 'px-5 lg:px-6'} pr-5 lg:pr-6 text-sm text-white placeholder:text-silver/20 focus:outline-none focus:border-gold/30 transition-all`}
+      className={`w-full bg-secondary/30 border border-white/5 rounded-xl lg:rounded-2xl py-3 lg:py-3.5 ${Icon ? 'pl-11 lg:pl-12' : 'px-5 lg:px-6'} pr-5 lg:pr-6 text-sm text-primary placeholder:text-silver/20 focus:outline-none focus:border-gold/30 transition-all`}
     />
   </div>
 );
@@ -231,7 +226,7 @@ export const Badge = ({ children, color = "gold" }: { children: ReactNode, color
 export const SectionTitle = ({ subtitle, title }: { subtitle: string, title: string }) => (
   <div className="space-y-1 lg:space-y-2 mb-6 lg:mb-8">
     <p className="text-[8px] lg:text-[10px] uppercase tracking-[0.3em] lg:tracking-[0.4em] text-gold font-black opacity-60 leading-none">{subtitle}</p>
-    <h2 className="text-3xl lg:text-4xl xl:text-5xl font-serif text-white tracking-tighter uppercase leading-tight">{title}</h2>
+    <h2 className="text-3xl lg:text-4xl xl:text-5xl font-serif text-primary tracking-tighter uppercase leading-tight">{title}</h2>
   </div>
 );
 
@@ -253,7 +248,7 @@ export const GlassModal = ({ isOpen, onClose, title, children }: { isOpen: boole
           className="relative w-full max-w-2xl bg-secondary border border-white/5 rounded-[24px] lg:rounded-[40px] shadow-2xl overflow-hidden"
         >
           <div className="px-6 lg:px-10 py-5 lg:py-8 border-b border-white/5 flex justify-between items-center bg-black/20">
-            <h3 className="text-lg lg:text-xl font-serif text-white uppercase tracking-widest">{title}</h3>
+            <h3 className="text-lg lg:text-xl font-serif text-primary uppercase tracking-widest">{title}</h3>
             <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full text-silver transition-colors">
               <XMarkIcon className="w-5 h-5 lg:w-6 lg:h-6" />
             </button>

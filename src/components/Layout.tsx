@@ -107,7 +107,7 @@ export const Layout = ({
       </AnimatePresence>
 
       {/* Main Header */}
-      <header className={`h-20 lg:h-24 flex items-center justify-between px-6 lg:px-12 border-b border-white/[0.03] bg-black/40 backdrop-blur-xl sticky z-50 transition-all ${isOperator && !isAdminView ? 'top-10' : 'top-0'}`}>
+      <header className={`h-20 lg:h-24 flex items-center justify-between px-6 lg:px-12 border-b border-white/5 glass-card sticky z-50 transition-all ${isOperator && !isAdminView ? 'top-10' : 'top-0'}`}>
         <div className="flex items-center gap-4 lg:gap-6">
           <Link to="/" className="relative group shrink-0">
             <motion.div whileHover={{ scale: 1.05 }} className="w-10 h-10 lg:w-14 lg:h-14 rounded-full overflow-hidden border-2 border-gold/30 shadow-2xl shadow-gold/10">

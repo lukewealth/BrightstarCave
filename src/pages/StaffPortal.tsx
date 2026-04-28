@@ -104,13 +104,25 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
     );
 
     const paidOrders = relevantOrders.filter(o => o.status === 'paid' && o.createdAt?.toDate() >= today);
+    const myPaidOrders = paidOrders.filter(o => o.staffId === user?.uid);
+    
     const totalRevenue = paidOrders.reduce((acc, curr) => acc + (curr.total || 0), 0);
+    const myRevenue = myPaidOrders.reduce((acc, curr) => acc + (curr.total || 0), 0);
+    
     const activeOrders = relevantOrders.filter(o => o.status === 'pending-payment').length;
     
     const relevantInventory = role === 'admin' ? inventory : inventory.filter(i => deptCategories.includes(i.category));
     const lowStock = relevantInventory.filter(i => i.stock < 10).length;
 
-    return { totalRevenue, activeOrders, lowStock, totalOrders: paidOrders.length, relevantOrders };
+    return { 
+      totalRevenue, 
+      myRevenue,
+      activeOrders, 
+      lowStock, 
+      totalOrders: paidOrders.length, 
+      myOrdersCount: myPaidOrders.length,
+      relevantOrders 
+    };
   }, [orders, inventory, role, deptCategories, departmentType, user?.uid]);
 
   useEffect(() => {

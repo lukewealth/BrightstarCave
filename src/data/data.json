@@ -20,8 +20,8 @@
     },
     {
       "id": "kt-03",
-      "name": "Fish / Goat Meat Peppersoup",
-      "price": 3000,
+      "name": "Fish Peppersoup",
+      "price": 5000,
       "category": "Kitchen Menu",
       "type": "kitchen",
       "stock": 30,
@@ -65,7 +65,7 @@
     },
     {
       "id": "kt-16",
-      "name": "River Fish",
+      "name": "Tilapia Fish",
       "price": 15000,
       "category": "Exotic Kitchen",
       "type": "kitchen",
@@ -726,452 +726,564 @@
       "image": "/images/snooker.jpg"
     },
     {
-      "id": 1,
+      "id": "1",
       "name": "Heineken",
       "price": 2000,
       "category": "Beer",
+      "type": "bar",
       "description": "Premium lager beer.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 2,
+      "id": "2",
       "name": "Trophy",
       "price": 1500,
       "category": "Beer",
+      "type": "bar",
       "description": "Smooth Nigerian lager.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 3,
+      "id": "3",
       "name": "Budweiser",
       "price": 1500,
       "category": "Beer",
+      "type": "bar",
       "description": "Classic lager beer.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 4,
+      "id": "4",
       "name": "Goldberg",
       "price": 1500,
       "category": "Beer",
+      "type": "bar",
       "description": "Refreshing lager beer.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 5,
+      "id": "5",
       "name": "Legend",
       "price": 2000,
       "category": "Beer",
+      "type": "bar",
       "description": "Dark premium stout lager.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 6,
+      "id": "6",
       "name": "3.3",
       "price": 1500,
       "category": "Beer",
+      "type": "bar",
       "description": "Strong lager beer.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 7,
+      "id": "7",
       "name": "Gulder",
       "price": 1500,
       "category": "Beer",
+      "type": "bar",
       "description": "Bold lager beer.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 8,
+      "id": "8",
       "name": "Orijin Beer",
       "price": 2000,
       "category": "Beer",
+      "type": "bar",
       "description": "Herbal alcoholic drink.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 9,
+      "id": "9",
       "name": "Predator",
       "price": 1000,
       "category": "Energy Drink",
+      "type": "bar",
       "description": "Energy boosting drink.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 10,
+      "id": "10",
       "name": "Flying Fish",
       "price": 1500,
       "category": "Beer",
+      "type": "bar",
       "description": "Flavoured beer drink.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 11,
+      "id": "11",
       "name": "Small Ice",
       "price": 1500,
       "category": "Drink",
+      "type": "bar",
       "description": "Chilled beverage.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 12,
+      "id": "12",
       "name": "Maltina",
       "price": 1000,
       "category": "Malt",
+      "type": "bar",
       "description": "Non-alcoholic malt drink.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 13,
+      "id": "13",
       "name": "Malta Guinness",
       "price": 1000,
       "category": "Malt",
+      "type": "bar",
       "description": "Rich malt beverage.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 14,
+      "id": "14",
       "name": "Desperado",
       "price": 1500,
       "category": "Beer",
+      "type": "bar",
       "description": "Tequila flavoured beer.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 15,
+      "id": "15",
       "name": "Medium Stout",
       "price": 2000,
       "category": "Stout",
+      "type": "bar",
       "description": "Medium size stout beer.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 16,
+      "id": "16",
       "name": "Small Stout",
       "price": 1500,
       "category": "Stout",
+      "type": "bar",
       "description": "Small stout beer.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 17,
+      "id": "17",
       "name": "Big Stout",
       "price": 2500,
       "category": "Stout",
+      "type": "bar",
       "description": "Large stout beer.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 18,
+      "id": "18",
       "name": "Heineken Can",
       "price": 1500,
       "category": "Beer",
+      "type": "bar",
       "description": "Canned Heineken lager.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 19,
+      "id": "19",
       "name": "Goldberg Black",
       "price": 1500,
       "category": "Beer",
+      "type": "bar",
       "description": "Dark Goldberg beer.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 20,
+      "id": "20",
       "name": "Coke",
       "price": 1000,
       "category": "Soft Drink",
+      "type": "bar",
       "description": "Refreshing cola drink.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 21,
+      "id": "21",
       "name": "Palmi",
       "price": 1500,
       "category": "Soft Drink",
+      "type": "bar",
       "description": "Palm-based drink.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 22,
+      "id": "22",
       "name": "Star",
       "price": 1500,
       "category": "Beer",
+      "type": "bar",
       "description": "Popular lager beer.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 23,
+      "id": "23",
       "name": "Life",
       "price": 1500,
       "category": "Beer",
+      "type": "bar",
       "description": "Smooth lager beer.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 24,
+      "id": "24",
       "name": "Water",
       "price": 500,
       "category": "Water",
+      "type": "bar",
       "description": "Pure bottled water.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 25,
+      "id": "25",
       "name": "Bullet",
       "price": 3000,
       "category": "Energy Drink",
+      "type": "bar",
       "description": "Premium energy drink.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 26,
+      "id": "26",
       "name": "Desperado Can",
       "price": 1500,
       "category": "Beer",
+      "type": "bar",
       "description": "Canned Desperado beer.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 27,
+      "id": "27",
       "name": "Imperial Juice",
       "price": 1500,
       "category": "Juice",
+      "type": "bar",
       "description": "Fruit juice drink.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 28,
+      "id": "28",
       "name": "Vitamilk",
       "price": 2500,
       "category": "Milk Drink",
+      "type": "bar",
       "description": "Nutritious milk beverage.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 29,
+      "id": "29",
       "name": "Yoghurt",
       "price": 3000,
       "category": "Dairy",
+      "type": "bar",
       "description": "Fresh yoghurt drink.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 30,
+      "id": "30",
       "name": "Power Horse",
       "price": 3000,
       "category": "Energy Drink",
+      "type": "bar",
       "description": "Strong energy drink.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 31,
+      "id": "31",
       "name": "Chi Orange",
       "price": 3000,
       "category": "Juice",
+      "type": "bar",
       "description": "Orange fruit juice.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 32,
+      "id": "32",
       "name": "Chi Active",
       "price": 3000,
       "category": "Juice",
+      "type": "bar",
       "description": "Vitamin juice drink.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 33,
+      "id": "33",
       "name": "Chi Exotic",
       "price": 3000,
       "category": "Juice",
+      "type": "bar",
       "description": "Mixed fruit juice.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 34,
+      "id": "34",
       "name": "Tomi Mango",
       "price": 1500,
       "category": "Juice",
+      "type": "bar",
       "description": "Mango juice drink.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 35,
+      "id": "35",
       "name": "Tomi Cranberry",
       "price": 1500,
       "category": "Juice",
+      "type": "bar",
       "description": "Cranberry juice drink.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 36,
+      "id": "36",
       "name": "Tomi Orange",
       "price": 1500,
       "category": "Juice",
+      "type": "bar",
       "description": "Orange juice drink.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 37,
+      "id": "37",
       "name": "Orijin Bitters",
       "price": 1500,
       "category": "Bitters",
+      "type": "bar",
       "description": "Herbal bitters drink.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 38,
+      "id": "38",
       "name": "Alomo Small",
       "price": 1500,
       "category": "Bitters",
+      "type": "bar",
       "description": "Small bottle bitters.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 39,
+      "id": "39",
       "name": "Action Bitters",
       "price": 1500,
       "category": "Bitters",
+      "type": "bar",
       "description": "Herbal bitters.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 40,
+      "id": "40",
       "name": "Cazadores Tequila",
       "price": 75000,
       "category": "Tequila",
+      "type": "bar",
       "description": "Premium tequila.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 41,
+      "id": "41",
       "name": "Sierra Tequila",
       "price": 30500,
       "category": "Tequila",
+      "type": "bar",
       "description": "Smooth tequila.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 42,
+      "id": "42",
       "name": "Olmeca Tequila Silver",
       "price": 60000,
       "category": "Tequila",
+      "type": "bar",
       "description": "Silver tequila.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 43,
+      "id": "43",
       "name": "Martell VS",
       "price": 71500,
       "category": "Cognac",
+      "type": "bar",
       "description": "Martell VS cognac.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 44,
+      "id": "44",
       "name": "Martell Blue Swift",
       "price": 150000,
       "category": "Cognac",
+      "type": "bar",
       "description": "Premium Martell Blue Swift.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 45,
+      "id": "45",
       "name": "Tombo Whiskey",
       "price": 20000,
       "category": "Whiskey",
+      "type": "bar",
       "description": "Affordable whiskey.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 46,
+      "id": "46",
       "name": "Ballantines Whiskey",
       "price": 30000,
       "category": "Whiskey",
+      "type": "bar",
       "description": "Blended Scotch whisky.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 47,
+      "id": "47",
       "name": "Red Label",
       "price": 35000,
       "category": "Whiskey",
+      "type": "bar",
       "description": "Johnnie Walker Red Label.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 48,
+      "id": "48",
       "name": "Jameson Black",
       "price": 70500,
       "category": "Whiskey",
+      "type": "bar",
       "description": "Premium Jameson Black Barrel.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 49,
+      "id": "49",
       "name": "Hennessy VSOP",
       "price": 200000,
       "category": "Cognac",
+      "type": "bar",
       "description": "Fine cognac.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 50,
+      "id": "50",
       "name": "Hennessy VS",
       "price": 80500,
       "category": "Cognac",
+      "type": "bar",
       "description": "Classic Hennessy cognac.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 51,
+      "id": "51",
       "name": "Hennessy XO",
       "price": 450000,
       "category": "Cognac",
+      "type": "bar",
       "description": "Luxury XO cognac.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 52,
+      "id": "52",
       "name": "Don Julio",
       "price": 30000,
       "category": "Tequila",
+      "type": "bar",
       "description": "Premium tequila.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 53,
+      "id": "53",
       "name": "Belaire Rose",
       "price": 20000,
       "category": "Wine",
+      "type": "bar",
       "description": "Sparkling rosé wine.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 54,
+      "id": "54",
       "name": "Robertson Redwine",
       "price": 200000,
       "category": "Wine",
+      "type": "bar",
       "description": "Premium red wine.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 55,
+      "id": "55",
       "name": "Bull",
       "price": 20000,
       "category": "Energy Drink",
+      "type": "bar",
       "description": "Energy drink.",
-      "available": true
+      "available": true,
+      "stock": 100
     },
     {
-      "id": 56,
+      "id": "56",
       "name": "Glacobazzi",
       "price": 25000,
       "category": "Wine",
+      "type": "bar",
       "description": "Imported wine.",
-      "available": true
+      "available": true,
+      "stock": 100
     }
   ]
 }

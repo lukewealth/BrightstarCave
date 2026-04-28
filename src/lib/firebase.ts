@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
 import { getAnalytics, isSupported } from 'firebase/analytics';
+import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { 
   initializeFirestore,
   persistentLocalCache,
@@ -15,7 +16,8 @@ import {
   where, 
   limit,
   serverTimestamp,
-  getDocFromServer
+  getDocFromServer,
+  addDoc
 } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -42,9 +44,62 @@ export const db = initializeFirestore(app, {
 }, dbId);
 
 export const analytics = isSupported().then(yes => yes ? getAnalytics(app) : null);
+export const messaging = isSupported().then(yes => yes ? getMessaging(app) : null);
+
 export const googleProvider = new GoogleAuthProvider();
 
 export type UserRole = 'admin' | 'staff_bar' | 'staff_waiter' | 'staff' | 'guest';
+
+/**
+ * Super Admin Audit Logger
+ * Tracks all stack changes, financial shifts, and inventory adjustments
+ */
+export const logAudit = async (action: string, details: any, category: 'sales' | 'inventory' | 'staff' | 'system' = 'system') => {
+  try {
+    const user = auth.currentUser;
+    await addDoc(collection(db, "audits"), {
+      action,
+      details,
+      category,
+      performedBy: user?.email || 'system',
+      performedByUid: user?.uid || 'system',
+      timestamp: serverTimestamp(),
+      severity: category === 'sales' || category === 'inventory' ? 'high' : 'medium'
+    });
+    
+    // In a real-world scenario, this would trigger a Cloud Function to send Email/Push
+    console.log(`[AUDIT] ${action}:`, details);
+  } catch (err) {
+    console.error("Audit logging failed:", err);
+  }
+};
+
+export const requestNotificationPermission = async () => {
+  try {
+    const msg = await messaging;
+    if (!msg) return null;
+
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      const token = await getToken(msg, {
+        vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY // Ensure this is in .env
+      });
+      
+      if (token && auth.currentUser) {
+        // Store token for super admin to receive pushes
+        await setDoc(doc(db, "fcm_tokens", auth.currentUser.uid), {
+          token,
+          email: auth.currentUser.email,
+          updatedAt: serverTimestamp()
+        });
+      }
+      return token;
+    }
+  } catch (err) {
+    console.error("FCM Token generation failed:", err);
+  }
+  return null;
+};
 
 export const getUserRole = async (uid: string, email?: string | null): Promise<UserRole> => {
   const env = (import.meta as any).env;
@@ -100,7 +155,7 @@ export const seedDatabaseFromJSON = async (jsonData: any) => {
     }
     
     await batch.commit();
-    console.log("System Resources Restored Successfully.");
+    await logAudit("SYSTEM_RESTORE", { itemCount: menuItems.length }, 'system');
   } catch (err) {
     console.error("Master Restoration Failed:", err);
   }

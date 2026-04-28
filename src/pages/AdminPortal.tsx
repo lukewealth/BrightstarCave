@@ -24,7 +24,9 @@ import {
   CloudArrowUpIcon,
   UserIcon,
   CheckBadgeIcon,
-  ArrowLeftOnRectangleIcon
+  ArrowLeftOnRectangleIcon,
+  BellIcon,
+  ClipboardDocumentCheckIcon
 } from "@heroicons/react/24/outline";
 import { User, sendPasswordResetEmail } from "firebase/auth";
 import { 
@@ -41,7 +43,7 @@ import {
   where,
   addDoc
 } from "firebase/firestore";
-import { db, getUserRole, UserRole, auth, seedDatabaseFromJSON, logout } from "../lib/firebase";
+import { db, getUserRole, UserRole, auth, seedDatabaseFromJSON, logout, logAudit, requestNotificationPermission } from "../lib/firebase";
 import menuDataArchive from "../data/data.json";
 import { 
   GlassCard, 
@@ -60,15 +62,17 @@ import { useNavigate } from "react-router-dom";
 export const AdminPortal = ({ user }: { user: User | null }) => {
   const navigate = useNavigate();
   const [role, setRole] = useState<UserRole | null>(null);
-  const [view, setView] = useState<'dashboard' | 'inventory' | 'staff' | 'orders' | 'accounting' | 'menu'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'inventory' | 'staff' | 'orders' | 'accounting' | 'menu' | 'audits'>('dashboard');
   const [orders, setOrders] = useState<any[]>([]);
   const [inventory, setInventory] = useState<any[]>([]);
   const [staff, setStaff] = useState<any[]>([]);
   const [menuItems, setMenuItems] = useState<any[]>([]);
+  const [audits, setAudits] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'item' | 'staff' | 'menu'>('item');
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error', visible: boolean }>({ message: '', type: 'success', visible: false });
 
   // Stats calculation
@@ -118,11 +122,25 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
       setMenuItems(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
 
-    return () => { unsubOrders(); unsubInv(); unsubStaff(); unsubMenu(); };
+    const unsubAudits = onSnapshot(query(collection(db, "audits"), orderBy("timestamp", "desc"), limit(200)), (snap) => {
+      setAudits(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    return () => { unsubOrders(); unsubInv(); unsubStaff(); unsubMenu(); unsubAudits(); };
   }, [role]);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type, visible: true });
+  };
+
+  const handleEnablePush = async () => {
+    const token = await requestNotificationPermission();
+    if (token) {
+      setPushEnabled(true);
+      showToast("Master Notification Stream Active");
+    } else {
+      showToast("Authorization Denied", "error");
+    }
   };
 
   const handleRestoreArchive = async () => {
@@ -155,6 +173,7 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
       };
 
       await setDoc(staffRef, staffData, { merge: true });
+      await logAudit(selectedItem.id ? "PERSONNEL_UPDATE" : "PERSONNEL_ONBOARD", { email: selectedItem.email, role: staffData.role }, 'staff');
       showToast(selectedItem.id ? "Personnel updated" : "Operator onboarded successfully");
       setIsModalOpen(false);
     } catch (err: any) {
@@ -194,6 +213,7 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
         updatedAt: serverTimestamp()
       }, { merge: true });
 
+      await logAudit("MENU_RESOURCE_SYNC", { name: itemData.name, price: itemData.price, stock: itemData.stock }, 'inventory');
       showToast("Resource synchronization successful");
       setIsModalOpen(false);
     } catch (err: any) {
@@ -205,9 +225,9 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
     e.preventDefault();
     try {
       await updateDoc(doc(db, "inventory", selectedItem.id), { stock: Number(selectedItem.stock) });
-      // Sync stock back to menu for live readiness
       await updateDoc(doc(db, "menu", selectedItem.id), { stock: Number(selectedItem.stock) });
       
+      await logAudit("STOCK_ADJUSTMENT", { name: selectedItem.name, newStock: selectedItem.stock }, 'inventory');
       showToast("Stock level authorization confirmed");
       setIsModalOpen(false);
     } catch (err) {
@@ -222,6 +242,7 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
     { id: 'menu', icon: QueueListIcon, label: 'Master Menu' },
     { id: 'staff', icon: UserGroupIcon, label: 'Personnel' },
     { id: 'accounting', icon: BanknotesIcon, label: 'Financials' },
+    { id: 'audits', icon: ClipboardDocumentCheckIcon, label: 'Master Audit' },
   ];
 
   if (role !== 'admin') {
@@ -255,11 +276,17 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
             </nav>
           </div>
           <div className="pt-6 border-t border-white/5 space-y-4">
+            {!pushEnabled && (
+              <button onClick={handleEnablePush} className="w-full flex items-center gap-3 p-4 rounded-2xl bg-gold/5 border border-gold/20 text-gold hover:bg-gold hover:text-black transition-all group">
+                <BellIcon className="w-5 h-5" />
+                <span className="text-[9px] font-black uppercase tracking-widest">Enable Notifications</span>
+              </button>
+            )}
             <button onClick={handleRestoreArchive} className="w-full flex items-center gap-3 p-4 rounded-2xl bg-emerald/10 border border-emerald/20 text-emerald hover:bg-emerald hover:text-black transition-all group">
               <CloudArrowUpIcon className="w-5 h-5" />
               <span className="text-[9px] font-black uppercase tracking-widest">Factory Restore</span>
             </button>
-            <button onClick={handleSignOut} className="w-full flex items-center gap-3 p-4 rounded-2xl bg-red-500/5 border border-red-500/10 text-red-400 hover:bg-red-500 hover:text-primary transition-all group">
+            <button onClick={handleSignOut} className="w-full flex items-center gap-3 p-4 rounded-2xl bg-red-500/5 border border-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all group">
               <ArrowLeftOnRectangleIcon className="w-5 h-5" />
               <span className="text-[9px] font-black uppercase tracking-widest">Terminate Session</span>
             </button>
@@ -270,7 +297,7 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
       <main className="flex-1 overflow-y-auto p-6 lg:p-12 xl:p-20 space-y-10 lg:space-y-16 no-scrollbar">
         <header className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-8 pb-8 border-b border-white/5">
           <div className="space-y-3">
-            <h3 className="text-gold text-[9px] uppercase tracking-[0.6em] font-black opacity-60">Admin Protocol v9.2</h3>
+            <h3 className="text-gold text-[9px] uppercase tracking-[0.6em] font-black opacity-60">Admin Protocol v9.3</h3>
             <h2 className="text-4xl xl:text-5xl font-serif text-primary tracking-tighter uppercase">{view}</h2>
           </div>
           <div className="flex gap-6">
@@ -310,6 +337,27 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
           </div>
         )}
 
+        {view === 'audits' && (
+          <div className="space-y-10">
+            <SectionTitle subtitle="Governance Traceability" title="Master Audit Logs" />
+            <LuxuryTable headers={['Timestamp', 'Action', 'Category', 'Operator', 'Details']}>
+              {audits.map((audit) => (
+                <tr key={audit.id} className="group hover:bg-white/[0.02] border-b border-white/[0.02]">
+                  <td className="px-6 py-5 text-[10px] text-silver font-mono">{audit.timestamp?.toDate().toLocaleString()}</td>
+                  <td className="px-6 py-5">
+                    <p className="text-xs font-black text-white uppercase tracking-wider">{audit.action}</p>
+                  </td>
+                  <td className="px-6 py-5">
+                    <Badge color={audit.category === 'sales' ? 'gold' : audit.category === 'inventory' ? 'emerald' : 'silver'}>{audit.category}</Badge>
+                  </td>
+                  <td className="px-6 py-5 text-[10px] text-silver font-bold uppercase">{audit.performedBy.split('@')[0]}</td>
+                  <td className="px-6 py-5 text-[10px] text-silver/60 italic truncate max-w-xs">{JSON.stringify(audit.details)}</td>
+                </tr>
+              ))}
+            </LuxuryTable>
+          </div>
+        )}
+
         {view === 'inventory' && (
           <div className="space-y-10">
             <SectionTitle subtitle="Resource Synchronization" title="Stock Analytics" />
@@ -343,7 +391,7 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
                   <div className="space-y-2"><h4 className="text-xl font-bold text-primary group-hover:text-gold transition-colors leading-tight">{item.name}</h4><p className="text-[10px] text-silver/60 line-clamp-3 leading-relaxed">{item.description}</p></div>
                   <div className="flex gap-4 pt-6 border-t border-white/5">
                     <button onClick={() => { setSelectedItem(item); setModalType('menu'); setIsModalOpen(true); }} className="flex-1 py-3 text-[9px] uppercase font-black tracking-widest text-silver hover:text-gold border border-white/10 rounded-2xl transition-all">Configure</button>
-                    <button onClick={async () => { if(window.confirm("Purge resource?")) { await deleteDoc(doc(db, "menu", item.id)); await deleteDoc(doc(db, "inventory", item.id)); showToast("Resource purged"); } }} className="p-3 text-red-400/20 hover:text-red-400 hover:bg-red-400/10 rounded-2xl transition-all"><TrashIcon className="w-5 h-5" /></button>
+                    <button onClick={async () => { if(window.confirm("Purge resource?")) { await deleteDoc(doc(db, "menu", item.id)); await deleteDoc(doc(db, "inventory", item.id)); await logAudit("MENU_PURGE", { name: item.name }, 'inventory'); showToast("Resource purged"); } }} className="p-3 text-red-400/20 hover:text-red-400 hover:bg-red-400/10 rounded-2xl transition-all"><TrashIcon className="w-5 h-5" /></button>
                   </div>
                 </GlassCard>
               ))}
@@ -361,7 +409,7 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
                   <div className="space-y-1"><p className="text-sm font-bold text-primary truncate tracking-widest">{member.email}</p><p className="text-[8px] uppercase tracking-[0.3em] text-silver/40 font-black">Operator Key: {member.id.slice(-8)}</p></div>
                   <div className="flex gap-4 pt-6 border-t border-white/5">
                     <button onClick={() => { setSelectedItem(member); setModalType('staff'); setIsModalOpen(true); }} className="flex-1 py-3 text-[9px] uppercase font-black tracking-widest text-silver hover:text-gold border border-white/10 rounded-2xl transition-all">Credentials</button>
-                    <button onClick={async () => { if(window.confirm("Revoke access?")) { await deleteDoc(doc(db, "admins", member.id)); showToast("Access revoked"); } }} className="p-3 text-red-400/20 hover:text-red-400 rounded-2xl transition-all"><TrashIcon className="w-5 h-5" /></button>
+                    <button onClick={async () => { if(window.confirm("Revoke access?")) { await deleteDoc(doc(db, "admins", member.id)); await logAudit("ACCESS_REVOKED", { email: member.email }, 'staff'); showToast("Access revoked"); } }} className="p-3 text-red-400/20 hover:text-red-400 rounded-2xl transition-all"><TrashIcon className="w-5 h-5" /></button>
                   </div>
                 </GlassCard>
               ))}

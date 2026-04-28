@@ -18,26 +18,27 @@ initializeApp({
 const db = getFirestore();
 
 async function addAdmin() {
-  const email = 'contact@tricode.pro';
+  const email = 'brightstarcave@gmail.com';
+  const uid = 'BuOpCimRjSb297fNxOVRY484K5E2';
+  
   try {
-    console.log(`Adding ${email} as admin...`);
-    const adminRef = db.collection('admins').doc(); // Auto-ID or we could use email as ID if we want to be sure
+    console.log(`Ensuring ${email} (UID: ${uid}) is a Super Admin...`);
     
-    // Check if exists first
-    const snapshot = await db.collection('admins').where('email', '==', email).get();
-    if (snapshot.empty) {
-      await db.collection('admins').add({
-        email: email,
-        role: 'admin',
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp()
-      });
-      console.log(`Admin ${email} added successfully.`);
-    } else {
-      console.log(`Admin ${email} already exists.`);
-    }
+    // We use the UID as the Document ID to match the Firestore rules:
+    // exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+    const adminRef = db.collection('admins').doc(uid);
+    
+    await adminRef.set({
+      email: email,
+      role: 'admin',
+      updatedAt: FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    console.log(`✅ Success: Admin document created/updated for ${email}`);
+    
   } catch (error) {
-    console.error("Error adding admin:", error);
+    console.error("❌ Error adding admin:", error);
   } finally {
     process.exit();
   }

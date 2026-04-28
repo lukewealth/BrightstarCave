@@ -1,66 +1,60 @@
-import { initializeApp, cert } from 'firebase-admin/app';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import { getFirestore, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import * as dotenv from 'dotenv';
-import * as fs from 'fs';
-import * as path from 'path';
 
 dotenv.config();
 
-const projectId = process.env.VITE_FIREBASE_PROJECT_ID;
+const firebaseConfig = {
+  projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+  appId: process.env.VITE_FIREBASE_APP_ID,
+  apiKey: process.env.VITE_FIREBASE_API_KEY,
+  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
+  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  measurementId: process.env.VITE_FIREBASE_MEASUREMENT_ID
+};
 
-if (!projectId) {
-  console.error("VITE_FIREBASE_PROJECT_ID missing in .env");
-  process.exit(1);
-}
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-// Initialize admin with project ID
-initializeApp({
-  projectId: projectId
-});
+async function seedAdmin() {
+  const email = process.env.VITE_ADMIN_EMAIL;
+  const password = process.env.VITE_ADMIN_PASSWORD;
+  const uid = process.env.VITE_ADMIN_UID;
 
-const db = getFirestore();
+  if (!email || !password || !uid) {
+    console.error("Admin credentials (email, password, or uid) missing in .env");
+    process.exit(1);
+  }
 
-async function seed() {
+  console.log(`Authenticating as ${email}...`);
   try {
-    const dataPath = path.join(process.cwd(), 'src/data/data.json');
-    if (!fs.existsSync(dataPath)) {
-      console.error(`Data file not found at ${dataPath}`);
-      return;
-    }
-    const data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
-
-    console.log("Seeding menu and inventory using Admin SDK...");
-    const batch = db.batch();
-
-    for (const item of data.menu) {
-      // Seed Menu
-      const menuRef = db.collection('menu').doc(item.id);
-      batch.set(menuRef, {
-        ...item,
-        updatedAt: FieldValue.serverTimestamp()
-      });
-
-      // Seed Inventory
-      const inventoryRef = db.collection('inventory').doc(item.id);
-      batch.set(inventoryRef, {
-        name: item.name,
-        price: item.price,
-        type: item.type,
-        stock: item.stock,
-        category: item.category,
-        lastRestocked: FieldValue.serverTimestamp()
-      });
-      
-      console.log(`- Prepared: ${item.name}`);
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const authedUid = userCredential.user.uid;
+    
+    console.log(`Authenticated successfully. Auth UID: ${authedUid}`);
+    
+    if (authedUid !== uid) {
+      console.warn(`⚠️ Warning: Auth UID (${authedUid}) does not match VITE_ADMIN_UID (${uid})`);
     }
 
-    await batch.commit();
-    console.log("Seeding complete!");
+    console.log(`Ensuring admin document exists for UID: ${authedUid}...`);
+    
+    await setDoc(doc(db, 'admins', authedUid), {
+      email: email,
+      role: 'admin',
+      updatedAt: serverTimestamp(),
+      createdAt: serverTimestamp()
+    }, { merge: true });
+
+    console.log(`✅ Success: Admin document for ${email} is active.`);
   } catch (error) {
-    console.error("Error during seeding:", error);
+    console.error("❌ Error during admin seeding:", error);
   } finally {
     process.exit();
   }
 }
 
-seed();
+seedAdmin();

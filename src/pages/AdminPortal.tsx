@@ -7,6 +7,7 @@ import {
   SparklesIcon,
   ExclamationTriangleIcon,
   ChevronRightIcon,
+  ChevronLeftIcon,
   PlusIcon,
   PencilSquareIcon,
   TrashIcon,
@@ -72,6 +73,7 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
   const [modalType, setModalType] = useState<'item' | 'staff' | 'menu'>('item');
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error', visible: boolean }>({ message: '', type: 'success', visible: false });
 
@@ -258,37 +260,60 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row h-full bg-primary font-sans text-primary overflow-hidden">
-      <aside className={`fixed lg:relative inset-y-0 left-0 w-72 lg:w-80 border-r border-white/[0.03] bg-black/40 p-8 lg:p-10 flex flex-col justify-between backdrop-blur-3xl z-[100] transition-transform duration-500 lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+    <div className="flex flex-col lg:flex-row h-full bg-primary font-sans text-primary overflow-hidden relative">
+      {/* Mobile Overlay */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsSidebarOpen(false)}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] lg:hidden"
+          />
+        )}
+      </AnimatePresence>
+
+      <aside className={`fixed lg:relative inset-y-0 left-0 ${isCollapsed ? 'lg:w-28' : 'w-72 lg:w-80'} border-r border-white/[0.03] bg-black/40 p-6 lg:p-10 flex flex-col justify-between backdrop-blur-3xl z-[100] transition-all duration-500 lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="space-y-12">
           <div className="px-2">
             <div className="flex justify-between items-center mb-10">
-              <p className="text-[9px] uppercase tracking-[0.4em] text-gold font-black opacity-60">Master Command</p>
-              <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-1 text-silver/40"><XMarkIcon className="w-5 h-5" /></button>
+              {!isCollapsed && <p className="text-[9px] uppercase tracking-[0.4em] text-gold font-black opacity-60">Master Command</p>}
+              <div className="flex gap-2">
+                <button onClick={() => setIsCollapsed(!isCollapsed)} className="hidden lg:block p-1 text-silver/40 hover:text-gold transition-colors">
+                  {isCollapsed ? <ChevronRightIcon className="w-5 h-5" /> : <ChevronLeftIcon className="w-5 h-5" />}
+                </button>
+                <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-1 text-silver/40"><XMarkIcon className="w-5 h-5" /></button>
+              </div>
             </div>
             <nav className="space-y-2">
               {navItems.map((item) => (
-                <button key={item.id} onClick={() => { setView(item.id as any); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-4 text-[10px] p-4 rounded-2xl transition-all uppercase tracking-[0.2em] font-black ${view === item.id ? 'bg-gold text-black shadow-2xl shadow-gold/20' : 'text-silver hover:bg-white/5 hover:text-gold'}`}>
+                <button 
+                  key={item.id} 
+                  onClick={() => { setView(item.id as any); setIsSidebarOpen(false); }} 
+                  className={`w-full flex items-center gap-4 text-[10px] p-4 rounded-2xl transition-all uppercase tracking-[0.2em] font-black ${view === item.id ? 'bg-gold text-black shadow-2xl shadow-gold/20' : 'text-silver hover:bg-white/5 hover:text-gold'} ${isCollapsed ? 'justify-center px-0' : ''}`}
+                  title={isCollapsed ? item.label : ''}
+                >
                   <item.icon className="w-5 h-5" />
-                  <span>{item.label}</span>
+                  {!isCollapsed && <span>{item.label}</span>}
                 </button>
               ))}
             </nav>
           </div>
-          <div className="pt-6 border-t border-white/5 space-y-4">
+          <div className={`pt-6 border-t border-white/5 space-y-4 ${isCollapsed ? 'items-center' : ''}`}>
             {!pushEnabled && (
-              <button onClick={handleEnablePush} className="w-full flex items-center gap-3 p-4 rounded-2xl bg-gold/5 border border-gold/20 text-gold hover:bg-gold hover:text-black transition-all group">
+              <button onClick={handleEnablePush} className={`w-full flex items-center gap-3 p-4 rounded-2xl bg-gold/5 border border-gold/20 text-gold hover:bg-gold hover:text-black transition-all group ${isCollapsed ? 'justify-center' : ''}`} title="Enable Notifications">
                 <BellIcon className="w-5 h-5" />
-                <span className="text-[9px] font-black uppercase tracking-widest">Enable Notifications</span>
+                {!isCollapsed && <span className="text-[9px] font-black uppercase tracking-widest">Notifications</span>}
               </button>
             )}
-            <button onClick={handleRestoreArchive} className="w-full flex items-center gap-3 p-4 rounded-2xl bg-emerald/10 border border-emerald/20 text-emerald hover:bg-emerald hover:text-black transition-all group">
+            <button onClick={handleRestoreArchive} className={`w-full flex items-center gap-3 p-4 rounded-2xl bg-emerald/10 border border-emerald/20 text-emerald hover:bg-emerald hover:text-black transition-all group ${isCollapsed ? 'justify-center' : ''}`} title="Factory Restore">
               <CloudArrowUpIcon className="w-5 h-5" />
-              <span className="text-[9px] font-black uppercase tracking-widest">Factory Restore</span>
+              {!isCollapsed && <span className="text-[9px] font-black uppercase tracking-widest">Restore</span>}
             </button>
-            <button onClick={handleSignOut} className="w-full flex items-center gap-3 p-4 rounded-2xl bg-red-500/5 border border-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all group">
+            <button onClick={handleSignOut} className={`w-full flex items-center gap-3 p-4 rounded-2xl bg-red-500/5 border border-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all group ${isCollapsed ? 'justify-center' : ''}`} title="Terminate Session">
               <ArrowLeftOnRectangleIcon className="w-5 h-5" />
-              <span className="text-[9px] font-black uppercase tracking-widest">Terminate Session</span>
+              {!isCollapsed && <span className="text-[9px] font-black uppercase tracking-widest">Terminate</span>}
             </button>
           </div>
         </div>
@@ -296,9 +321,17 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
 
       <main className="flex-1 overflow-y-auto p-6 lg:p-12 xl:p-20 space-y-10 lg:space-y-16 no-scrollbar">
         <header className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-8 pb-8 border-b border-white/5">
-          <div className="space-y-3">
-            <h3 className="text-gold text-[9px] uppercase tracking-[0.6em] font-black opacity-60">Admin Protocol v9.3</h3>
-            <h2 className="text-4xl xl:text-5xl font-serif text-primary tracking-tighter uppercase">{view}</h2>
+          <div className="flex flex-row-reverse justify-between items-start w-full xl:flex-row xl:w-auto">
+            <div className="space-y-3 text-right xl:text-left">
+              <h3 className="text-gold text-[9px] uppercase tracking-[0.6em] font-black opacity-60">Admin Protocol v9.3</h3>
+              <h2 className="text-4xl xl:text-5xl font-serif text-primary tracking-tighter uppercase">{view}</h2>
+            </div>
+            <button 
+              onClick={() => setIsSidebarOpen(true)}
+              className="lg:hidden p-3 bg-white/5 border border-white/10 rounded-2xl text-gold"
+            >
+              <Bars3Icon className="w-6 h-6" />
+            </button>
           </div>
           <div className="flex gap-6">
             <div className="xl:text-right">

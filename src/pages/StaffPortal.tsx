@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+ § import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   ChartBarIcon, 
@@ -6,6 +6,7 @@ import {
   SparklesIcon,
   ExclamationTriangleIcon,
   ChevronRightIcon,
+  ChevronLeftIcon,
   ArrowPathIcon,
   BanknotesIcon,
   Bars3Icon,
@@ -61,6 +62,7 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
   const [inventory, setInventory] = useState<any[]>([]);
   const [displayMenu, setDisplayMenu] = useState<MenuItem[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [aiInsights, setAiInsights] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [tableId, setTableId] = useState("");
@@ -104,25 +106,13 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
     );
 
     const paidOrders = relevantOrders.filter(o => o.status === 'paid' && o.createdAt?.toDate() >= today);
-    const myPaidOrders = paidOrders.filter(o => o.staffId === user?.uid);
-    
     const totalRevenue = paidOrders.reduce((acc, curr) => acc + (curr.total || 0), 0);
-    const myRevenue = myPaidOrders.reduce((acc, curr) => acc + (curr.total || 0), 0);
-    
     const activeOrders = relevantOrders.filter(o => o.status === 'pending-payment').length;
     
     const relevantInventory = role === 'admin' ? inventory : inventory.filter(i => deptCategories.includes(i.category));
     const lowStock = relevantInventory.filter(i => i.stock < 10).length;
 
-    return { 
-      totalRevenue, 
-      myRevenue,
-      activeOrders, 
-      lowStock, 
-      totalOrders: paidOrders.length, 
-      myOrdersCount: myPaidOrders.length,
-      relevantOrders 
-    };
+    return { totalRevenue, activeOrders, lowStock, totalOrders: paidOrders.length, relevantOrders };
   }, [orders, inventory, role, deptCategories, departmentType, user?.uid]);
 
   useEffect(() => {
@@ -270,7 +260,7 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
       <div className="h-full flex items-center justify-center bg-primary p-6 lg:p-20 text-center">
         <GlassCard className="p-12 space-y-6 max-w-lg">
           <ExclamationTriangleIcon className="w-16 h-16 text-gold mx-auto animate-pulse" />
-          <h2 className="text-3xl font-serif text-primary uppercase tracking-widest">Unauthorized Terminal</h2>
+          <h2 className="text-3xl font-serif text-white uppercase tracking-widest">Unauthorized Terminal</h2>
           <p className="text-silver opacity-60">Authorized personnel protocols only. Verify access points.</p>
         </GlassCard>
       </div>
@@ -278,44 +268,67 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row h-full bg-primary font-sans text-primary overflow-hidden">
+    <div className="flex flex-col lg:flex-row h-full bg-primary font-sans text-white overflow-hidden relative">
+      {/* Mobile Overlay */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsSidebarOpen(false)}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] lg:hidden"
+          />
+        )}
+      </AnimatePresence>
+
       {/* Operator Sidebar */}
-      <aside className={`fixed lg:relative inset-y-0 left-0 w-72 lg:w-80 border-r border-white/[0.03] bg-black/40 p-8 lg:p-10 flex flex-col justify-between backdrop-blur-3xl z-[100] transition-transform duration-500 lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed lg:relative inset-y-0 left-0 ${isCollapsed ? 'lg:w-28' : 'w-72 lg:w-80'} border-r border-white/[0.03] bg-black/40 p-6 lg:p-10 flex flex-col justify-between backdrop-blur-3xl z-[100] transition-all duration-500 lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="space-y-12">
           <div className="px-2">
             <div className="flex justify-between items-center mb-10">
-              <div className="space-y-1">
-                 <p className="text-[9px] uppercase tracking-[0.4em] text-gold font-black opacity-60">Terminal Hub</p>
-                 <h4 className="text-sm font-serif text-primary uppercase tracking-widest">{departmentName}</h4>
+              {!isCollapsed && (
+                <div className="space-y-1">
+                   <p className="text-[9px] uppercase tracking-[0.4em] text-gold font-black opacity-60">Terminal Hub</p>
+                   <h4 className="text-sm font-serif text-white uppercase tracking-widest">{departmentName}</h4>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <button onClick={() => setIsCollapsed(!isCollapsed)} className="hidden lg:block p-1 text-silver/40 hover:text-gold transition-colors">
+                  {isCollapsed ? <ChevronRightIcon className="w-5 h-5" /> : <ChevronLeftIcon className="w-5 h-5" />}
+                </button>
+                <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-1 text-silver/40"><XMarkIcon className="w-5 h-5" /></button>
               </div>
-              <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-1 text-silver/40"><XMarkIcon className="w-5 h-5" /></button>
             </div>
             <nav className="space-y-3">
               {navItems.map((item) => (
                 <button 
                   key={item.id}
                   onClick={() => { setView(item.id as any); setIsSidebarOpen(false); }}
-                  className={`w-full flex items-center gap-5 text-[10px] p-5 rounded-2xl transition-all uppercase tracking-[0.2em] font-black ${view === item.id ? 'bg-gold text-black shadow-2xl shadow-gold/20' : 'text-silver hover:bg-white/5 hover:text-gold'}`}
+                  className={`w-full flex items-center gap-5 text-[10px] p-5 rounded-2xl transition-all uppercase tracking-[0.2em] font-black ${view === item.id ? 'bg-gold text-black shadow-2xl shadow-gold/20' : 'text-silver hover:bg-white/5 hover:text-gold'} ${isCollapsed ? 'justify-center px-0' : ''}`}
+                  title={isCollapsed ? item.label : ''}
                 >
                   <item.icon className="w-5 h-5" />
-                  <span>{item.label}</span>
+                  {!isCollapsed && <span>{item.label}</span>}
                 </button>
               ))}
             </nav>
           </div>
         </div>
         
-        <div className="p-4 lg:p-6 border-t border-white/5 space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-gold/20 flex items-center justify-center text-gold font-bold shadow-xl border border-gold/10">{user?.email?.[0].toUpperCase()}</div>
-            <div className="overflow-hidden text-left">
-              <p className="text-[10px] font-black text-primary truncate">{user?.email}</p>
-              <p className="text-[7px] uppercase tracking-widest text-gold font-bold">Verified Operator</p>
+        <div className={`p-4 lg:p-6 border-t border-white/5 space-y-4 ${isCollapsed ? 'items-center' : ''}`}>
+          {!isCollapsed && (
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-gold/20 flex items-center justify-center text-gold font-bold shadow-xl border border-gold/10">{user?.email?.[0].toUpperCase()}</div>
+              <div className="overflow-hidden text-left">
+                <p className="text-[10px] font-black text-white truncate">{user?.email}</p>
+                <p className="text-[7px] uppercase tracking-widest text-gold font-bold">Verified Operator</p>
+              </div>
             </div>
-          </div>
-          <button onClick={handleSignOut} className="w-full flex items-center gap-3 p-4 rounded-2xl bg-red-500/5 border border-red-500/10 text-red-400 hover:bg-red-500 hover:text-primary transition-all group">
+          )}
+          <button onClick={handleSignOut} className={`w-full flex items-center gap-3 p-4 rounded-2xl bg-red-500/5 border border-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all group ${isCollapsed ? 'justify-center' : ''}`} title="Terminate Session">
             <ArrowLeftOnRectangleIcon className="w-5 h-5" />
-            <span className="text-[9px] font-black uppercase tracking-widest text-left">Terminate Session</span>
+            {!isCollapsed && <span className="text-[9px] font-black uppercase tracking-widest text-left">Terminate</span>}
           </button>
         </div>
       </aside>
@@ -323,11 +336,19 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
       <main className="flex-1 overflow-y-auto p-6 lg:p-12 xl:p-16 space-y-10 no-scrollbar">
 ...
         <header className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-10 pb-10 border-b border-white/5 relative">
-          <div className="space-y-4">
-            <h3 className="text-gold text-[10px] uppercase tracking-[0.6em] font-black opacity-40 flex items-center gap-3">
-              <BoltIcon className="w-4 h-4" /> Secure Operational POS v1.0
-            </h3>
-            <h2 className="text-4xl xl:text-6xl font-serif text-primary tracking-tighter uppercase">{view === 'pos' ? 'Order Entry' : view}</h2>
+          <div className="flex justify-between items-start w-full xl:w-auto">
+            <div className="space-y-4">
+              <h3 className="text-gold text-[10px] uppercase tracking-[0.6em] font-black opacity-40 flex items-center gap-3">
+                <BoltIcon className="w-4 h-4" /> Secure Operational POS v1.0
+              </h3>
+              <h2 className="text-4xl xl:text-6xl font-serif text-white tracking-tighter uppercase">{view === 'pos' ? 'Order Entry' : view}</h2>
+            </div>
+            <button 
+              onClick={() => setIsSidebarOpen(true)}
+              className="lg:hidden p-3 bg-white/5 border border-white/10 rounded-2xl text-gold"
+            >
+              <Bars3Icon className="w-6 h-6" />
+            </button>
           </div>
           {view === 'pos' && (
             <SilverInput placeholder="Quick Menu Search..." icon={MagnifyingGlassIcon} value={searchQuery} onChange={(e: any) => setSearchQuery(e.target.value)} className="w-full xl:w-96" />
@@ -345,7 +366,7 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
                       <Badge color={item.stock > 0 ? 'gold' : 'red'}>{item.stock} Unit</Badge>
                       <p className="text-lg font-black text-gold">₦{item.price.toLocaleString()}</p>
                     </div>
-                    <h4 className="text-lg font-serif text-primary uppercase group-hover:text-gold transition-colors">{item.name}</h4>
+                    <h4 className="text-lg font-serif text-white uppercase group-hover:text-gold transition-colors">{item.name}</h4>
                     <p className="text-[10px] text-silver/40 uppercase font-black tracking-widest">{item.category}</p>
                   </GlassCard>
                 ))}
@@ -359,13 +380,13 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
                   {cart.map(item => (
                     <div key={item.id} className="flex justify-between items-center p-4 bg-white/5 rounded-2xl">
                       <div className="space-y-1">
-                        <p className="text-[11px] font-bold text-primary uppercase">{item.name}</p>
+                        <p className="text-[11px] font-bold text-white uppercase">{item.name}</p>
                         <p className="text-[10px] text-gold font-mono">₦{(item.price * item.quantity).toLocaleString()}</p>
                       </div>
                       <div className="flex items-center gap-3">
-                        <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="text-silver hover:text-primary">-</button>
+                        <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="text-silver hover:text-white">-</button>
                         <span className="text-xs font-black w-4 text-center">{item.quantity}</span>
-                        <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="text-silver hover:text-primary">+</button>
+                        <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="text-silver hover:text-white">+</button>
                       </div>
                     </div>
                   ))}
@@ -389,7 +410,7 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
                    <Badge color="gold">Verified</Badge>
                 </div>
                 <div>
-                   <p className="text-sm font-bold text-primary uppercase tracking-widest mb-1">Total Revenue</p>
+                   <p className="text-sm font-bold text-white uppercase tracking-widest mb-1">Total Revenue</p>
                    <p className="text-4xl font-serif text-gold font-black">₦{stats.totalRevenue.toLocaleString()}</p>
                 </div>
              </GlassCard>
@@ -399,8 +420,8 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
                    <Badge color="emerald">Efficiency</Badge>
                 </div>
                 <div>
-                   <p className="text-sm font-bold text-primary uppercase tracking-widest mb-1">Settled Audits</p>
-                   <p className="text-4xl font-serif text-primary font-black">{stats.totalOrders} Transmissions</p>
+                   <p className="text-sm font-bold text-white uppercase tracking-widest mb-1">Settled Audits</p>
+                   <p className="text-4xl font-serif text-white font-black">{stats.totalOrders} Transmissions</p>
                 </div>
              </GlassCard>
              <GlassCard className="p-10 space-y-6">
@@ -409,8 +430,8 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
                    <Badge color="red">Attention</Badge>
                 </div>
                 <div>
-                   <p className="text-sm font-bold text-primary uppercase tracking-widest mb-1">Low Resource Warning</p>
-                   <p className="text-4xl font-serif text-primary font-black">{stats.lowStock} Skus</p>
+                   <p className="text-sm font-bold text-white uppercase tracking-widest mb-1">Low Resource Warning</p>
+                   <p className="text-4xl font-serif text-white font-black">{stats.lowStock} Skus</p>
                 </div>
              </GlassCard>
           </div>
@@ -425,16 +446,16 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
                   <div className="flex items-center gap-8">
                     <div className="w-20 h-20 bg-black rounded-[24px] flex flex-col items-center justify-center border border-white/10 shadow-inner group-hover:border-gold/20 transition-all">
                       <p className="text-[8px] text-gold font-black tracking-[0.2em] mb-1">ROOM</p>
-                      <p className="text-3xl font-serif text-primary font-black leading-none">{order.table}</p>
+                      <p className="text-3xl font-serif text-white font-black leading-none">{order.table}</p>
                     </div>
                     <div className="space-y-2">
-                      <p className="text-lg font-bold text-primary uppercase tracking-widest">{order.userName}</p>
+                      <p className="text-lg font-bold text-white uppercase tracking-widest">{order.userName}</p>
                       <div className="flex items-center gap-4 text-silver/40 text-[10px] font-black uppercase tracking-widest">
                          <span>{order.items.length} Resources</span>
                          <span className="w-1 h-1 bg-white/10 rounded-full" />
                          <span className="text-gold">₦{order.total.toLocaleString()}</span>
                          <span className="w-1 h-1 bg-white/10 rounded-full" />
-                         <span className="text-primary/40">OP: {order.staffName}</span>
+                         <span className="text-white/40">OP: {order.staffName}</span>
                       </div>
                     </div>
                   </div>
@@ -464,9 +485,9 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
               {stats.relevantOrders.filter(o => o.status === 'paid').map((order) => (
                 <tr key={order.id} className="group hover:bg-white/[0.02] border-b border-white/[0.02] transition-colors">
                   <td className="px-8 py-6 text-[10px] text-silver font-mono tracking-widest">{order.formattedTime}</td>
-                  <td className="px-8 py-6 text-[11px] text-primary font-black uppercase tracking-tighter">{order.id.slice(-8)}</td>
+                  <td className="px-8 py-6 text-[11px] text-white font-black uppercase tracking-tighter">{order.id.slice(-8)}</td>
                   <td className="px-8 py-6"><Badge color="gold">{order.table}</Badge></td>
-                  <td className="px-8 py-6 text-[10px] text-primary/60 font-black uppercase">{order.staffName}</td>
+                  <td className="px-8 py-6 text-[10px] text-white/60 font-black uppercase">{order.staffName}</td>
                   <td className="px-8 py-6 font-serif text-gold font-black text-lg">₦{order.total?.toLocaleString()}</td>
                   <td className="px-8 py-6 text-right">
                     <button onClick={() => handlePrintReceipt(order)} className="p-3 bg-emerald/10 text-emerald hover:bg-emerald hover:text-black rounded-xl transition-all shadow-xl hover:shadow-emerald/20 flex items-center gap-3 ml-auto group/btn">
@@ -487,7 +508,7 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
               {filteredInventory.map((item) => (
                 <tr key={item.id} className="group hover:bg-white/[0.02] border-b border-white/[0.02] transition-colors">
                   <td className="px-8 py-6">
-                    <p className="text-sm font-bold text-primary uppercase tracking-widest">{item.name}</p>
+                    <p className="text-sm font-bold text-white uppercase tracking-widest">{item.name}</p>
                   </td>
                   <td className="px-8 py-6">
                     <p className="text-[9px] text-silver/40 uppercase font-black tracking-[0.2em]">{item.category}</p>
@@ -507,10 +528,10 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
         <div className="space-y-8 p-4">
           <div className="p-8 bg-gold/5 border border-gold/20 rounded-[32px] text-center space-y-8 relative overflow-hidden">
             <ClockIcon className="w-14 h-14 text-gold animate-pulse mx-auto opacity-60" />
-            <div className="space-y-2"><p className="text-4xl font-serif text-primary font-black">Audit Active</p><p className="text-[9px] uppercase tracking-[0.4em] text-gold font-black">Waiting for Settlement Proof</p></div>
+            <div className="space-y-2"><p className="text-4xl font-serif text-white font-black">Audit Active</p><p className="text-[9px] uppercase tracking-[0.4em] text-gold font-black">Waiting for Settlement Proof</p></div>
             <div className="space-y-4 pt-6 border-t border-white/5 text-left">
               <div className="flex justify-between"><span className="text-[9px] text-silver uppercase font-bold tracking-widest">Bank Identifier</span><span className="text-[10px] text-gold font-black tracking-widest">MONIEPOINT 5007071458</span></div>
-              <div className="flex justify-between"><span className="text-[9px] text-silver uppercase font-bold tracking-widest">Verified Value</span><span className="text-xl text-primary font-serif font-black">₦{pendingOrderId ? orders.find(o => o.id === pendingOrderId)?.total?.toLocaleString() : totalAmount.toLocaleString()}</span></div>
+              <div className="flex justify-between"><span className="text-[9px] text-silver uppercase font-bold tracking-widest">Verified Value</span><span className="text-xl text-white font-serif font-black">₦{pendingOrderId ? orders.find(o => o.id === pendingOrderId)?.total?.toLocaleString() : totalAmount.toLocaleString()}</span></div>
             </div>
           </div>
           <EmeraldButton onClick={handleConfirmPayment} className="w-full py-5" disabled={isSubmitting}><span className="text-[9px] uppercase font-black tracking-widest">Authorize Paid & Print</span></EmeraldButton>

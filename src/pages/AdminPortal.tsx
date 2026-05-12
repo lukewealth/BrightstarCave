@@ -96,6 +96,21 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
   const [pushEnabled, setPushEnabled] = useState(false);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error', visible: boolean }>({ message: '', type: 'success', visible: false });
 
+  // Confirmation State
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type: 'default' | 'danger';
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+    type: 'default'
+  });
+
   // Search States
   const [searchQueries, setSearchQueries] = useState({
     inventory: "",

@@ -79,6 +79,21 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error', visible: boolean }>({ message: '', type: 'success', visible: false });
 
+  // Confirmation State
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type: 'default' | 'danger';
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+    type: 'default'
+  });
+
   useEffect(() => {
     if (user) {
       getUserRole(user.uid, user.email).then(setRole);
@@ -90,15 +105,15 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
 
     const unsubOrders = onSnapshot(query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(500)), (snap) => {
       setOrders(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
+    }, (err) => console.error("Orders sync error:", err));
 
     const unsubInv = onSnapshot(collection(db, "inventory"), (snap) => {
       setInventory(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
+    }, (err) => console.error("Inventory sync error:", err));
 
     const unsubMenu = onSnapshot(collection(db, "menu"), (snap) => {
       setDisplayMenu(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as MenuItem[]);
-    });
+    }, (err) => console.error("Menu sync error:", err));
 
     return () => { unsubOrders(); unsubInv(); unsubMenu(); };
   }, [role]);

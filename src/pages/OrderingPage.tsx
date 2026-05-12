@@ -40,7 +40,8 @@ import {
   GlassModal, 
   TabSystem, 
   Toast,
-  LionLoader
+  LionLoader,
+  ConfirmModal
 } from "../components/design-system/Primitive";
 import { trackPurchase, trackEvent, Events } from "../lib/analytics";
 import { useCart } from "../lib/cart-context";
@@ -107,12 +108,6 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
     }
   }, [user]);
 
-  if (loading) return (
-    <div className="min-h-[60vh] flex items-center justify-center">
-      <LionLoader />
-    </div>
-  );
-
   // Comprehensive Department Categorization Logic
   const deptCategories = useMemo(() => {
     if (role === 'staff_bar') {
@@ -139,6 +134,18 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
     const filteredCats = deptCategories ? allCats.filter(c => deptCategories.includes(c)) : allCats;
     return ["All", ...filteredCats];
   }, [displayMenu, deptCategories]);
+
+  const departmentName = useMemo(() => {
+    if (role === 'staff_bar') return "Bar Only";
+    if (role === 'staff_waiter') return "Kitchen Only";
+    return "Global Catalog";
+  }, [role]);
+
+  if (loading) return (
+    <div className="min-h-[60vh] flex items-center justify-center">
+      <LionLoader />
+    </div>
+  );
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type, visible: true });
@@ -240,12 +247,6 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
       showToast(reason, "error");
     } catch (err) { console.error(err); }
   };
-
-  const departmentName = useMemo(() => {
-    if (role === 'staff_bar') return "Bar Only";
-    if (role === 'staff_waiter') return "Kitchen Only";
-    return "Global Catalog";
-  }, [role]);
 
   return (
     <div className="flex h-full bg-primary text-primary overflow-hidden relative font-sans">

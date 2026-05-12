@@ -49,7 +49,8 @@ import {
   SilverInput,
   EmeraldButton,
   GlassModal,
-  LionLoader
+  LionLoader,
+  ConfirmModal
 } from "../components/design-system/Primitive";
 import { useCart } from "../lib/cart-context";
 import { menuItems, MenuItem } from "../data/menu";
@@ -77,6 +78,30 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error', visible: boolean }>({ message: '', type: 'success', visible: false });
+
+  useEffect(() => {
+    if (user) {
+      getUserRole(user.uid, user.email).then(setRole);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!role || role === 'guest') return;
+
+    const unsubOrders = onSnapshot(query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(500)), (snap) => {
+      setOrders(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    const unsubInv = onSnapshot(collection(db, "inventory"), (snap) => {
+      setInventory(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    const unsubMenu = onSnapshot(collection(db, "menu"), (snap) => {
+      setDisplayMenu(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as MenuItem[]);
+    });
+
+    return () => { unsubOrders(); unsubInv(); unsubMenu(); };
+  }, [role]);
 
   // Comprehensive Department Categorization
   const deptCategories = useMemo(() => {
@@ -133,8 +158,9 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
         return isInDept && matchesSearch;
       }),
       orders: stats.relevantOrders.filter(o => 
-        o.status === 'pending-payment' && 
-        (o.table.toLowerCase().includes(q.orders.toLowerCase()) || o.userName.toLowerCase().includes(q.orders.toLowerCase()))
+        (o.table.toLowerCase().includes(q.orders.toLowerCase()) || 
+         o.userName.toLowerCase().includes(q.orders.toLowerCase()) ||
+         o.status.toLowerCase().includes(q.orders.toLowerCase()))
       ),
       accounting: stats.relevantOrders.filter(o => 
         o.status === 'paid' && 
@@ -445,40 +471,47 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
 
         {view === 'orders' && (
           <div className="space-y-8">
-            <SectionTitle subtitle="Awaiting Settlement" title="Audit Queue" />
-            <div className="grid grid-cols-1 gap-6">
-              {stats.relevantOrders.filter(o => o.status === 'pending-payment').map((order) => (
-                <motion.div layout key={order.id} className="p-8 bg-secondary/40 border border-white/5 rounded-[32px] flex flex-col md:flex-row justify-between items-start md:items-center gap-8 group hover:border-gold/30 transition-all shadow-2xl">
-                  <div className="flex items-center gap-8">
-                    <div className="w-20 h-20 bg-black rounded-[24px] flex flex-col items-center justify-center border border-white/10 shadow-inner group-hover:border-gold/20 transition-all">
-                      <p className="text-[8px] text-gold font-black tracking-[0.2em] mb-1">ROOM</p>
-                      <p className="text-3xl font-serif text-white font-black leading-none">{order.table}</p>
+            <SectionTitle subtitle="Operational Stream" title="Dispatch Queue" />
+            <LuxuryTable headers={['Timestamp', 'Room/Table', 'Items Ordered', 'Operator', 'Value', 'Status', 'Action']}>
+              {filteredData.orders.map((order) => (
+                <tr key={order.id} className="group hover:bg-white/[0.02] border-b border-white/[0.02] transition-colors">
+                  <td className="px-8 py-6">
+                    <p className="text-[10px] text-silver font-mono">{order.formattedDate}</p>
+                    <p className="text-[10px] text-silver/40 font-mono">{order.formattedTime}</p>
+                  </td>
+                  <td className="px-8 py-6">
+                    <p className="text-sm font-bold text-white uppercase tracking-widest">{order.table}</p>
+                  </td>
+                  <td className="px-8 py-6">
+                    <div className="space-y-1">
+                      {order.items.map((item: any, idx: number) => (
+                        <p key={idx} className="text-[10px] text-silver/60">
+                          <span className="text-gold font-bold">{item.quantity}x</span> {item.name}
+                        </p>
+                      ))}
                     </div>
-                    <div className="space-y-2">
-                      <p className="text-lg font-bold text-white uppercase tracking-widest">{order.userName}</p>
-                      <div className="flex items-center gap-4 text-silver/40 text-[10px] font-black uppercase tracking-widest">
-                         <span>{order.items.length} Resources</span>
-                         <span className="w-1 h-1 bg-white/10 rounded-full" />
-                         <span className="text-gold">₦{order.total.toLocaleString()}</span>
-                         <span className="w-1 h-1 bg-white/10 rounded-full" />
-                         <span className="text-white/40">OP: {order.staffName}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-6 w-full md:w-auto">
-                     <div className="flex-1 md:flex-none flex items-center gap-3 px-5 py-3 bg-gold/10 rounded-2xl border border-gold/20 shadow-xl shadow-gold/5">
-                       <ClockIcon className="w-4 h-4 text-gold animate-spin-slow" />
-                       <span className="text-[9px] text-gold font-black uppercase tracking-widest">Synchronization In-Progress</span>
-                     </div>
-                     <GoldButton onClick={() => { setPendingOrderId(order.id); setShowCheckout(true); }} className="px-6 py-3 text-[10px] uppercase font-black tracking-widest">Process Settlement</GoldButton>
-                  </div>
-                </motion.div>
+                  </td>
+                  <td className="px-8 py-6 text-[10px] text-white/60 font-black uppercase">{order.staffName || "System"}</td>
+                  <td className="px-8 py-6 font-serif text-gold font-black text-lg">₦{order.total?.toLocaleString()}</td>
+                  <td className="px-8 py-6">
+                    <Badge color={order.status === 'paid' ? 'emerald' : 'gold'}>{order.status.replace('-', ' ').toUpperCase()}</Badge>
+                  </td>
+                  <td className="px-8 py-6 text-right">
+                    {order.status === 'pending-payment' ? (
+                      <GoldButton onClick={() => { setPendingOrderId(order.id); setShowCheckout(true); }} className="px-4 py-2 text-[9px] uppercase font-black tracking-widest">Settle</GoldButton>
+                    ) : (
+                      <button onClick={() => handlePrintReceipt(order)} className="p-2 bg-emerald/10 text-emerald hover:bg-emerald hover:text-black rounded-lg transition-all" title="Print Receipt">
+                        <PrinterIcon className="w-4 h-4" />
+                      </button>
+                    )}
+                  </td>
+                </tr>
               ))}
-            </div>
-            {stats.relevantOrders.filter(o => o.status === 'pending-payment').length === 0 && (
+            </LuxuryTable>
+            {filteredData.orders.length === 0 && (
               <div className="py-32 text-center opacity-10 space-y-6">
                 <ClockIcon className="w-20 h-20 mx-auto" />
-                <p className="text-[12px] uppercase tracking-[0.5em] font-black">All transmissions settled</p>
+                <p className="text-[12px] uppercase tracking-[0.5em] font-black">Queue clear</p>
               </div>
             )}
           </div>

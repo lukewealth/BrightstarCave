@@ -102,7 +102,8 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
     menu: "",
     staff: "",
     audits: "",
-    accounting: ""
+    accounting: "",
+    orders: ""
   });
 
   // Date Filter State for Accounting
@@ -175,6 +176,12 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
         o.id.toLowerCase().includes(q.accounting.toLowerCase()) || 
         o.staffName?.toLowerCase().includes(q.accounting.toLowerCase()) ||
         o.table?.toLowerCase().includes(q.accounting.toLowerCase())
+      ),
+      orders: orders.filter(o => 
+        o.id.toLowerCase().includes(q.orders.toLowerCase()) || 
+        o.staffName?.toLowerCase().includes(q.orders.toLowerCase()) ||
+        o.table?.toLowerCase().includes(q.orders.toLowerCase()) ||
+        o.status?.toLowerCase().includes(q.orders.toLowerCase())
       )
     };
   }, [inventory, menuItems, staff, audits, orders, searchQueries, dateFilter]);
@@ -636,6 +643,59 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
                 </GlassCard>
               ))}
             </div>
+          </div>
+        )}
+
+        {view === 'orders' && (
+          <div className="space-y-10">
+            <SectionTitle subtitle="Transaction Hub" title="Master Sales Queue" />
+            <LuxuryTable headers={['Timestamp', 'Room/Table', 'Items Ordered', 'Operator', 'Value', 'Status', 'Action']}>
+              {filteredData.orders.map((order) => (
+                <tr key={order.id} className="group hover:bg-white/[0.02] border-b border-white/[0.02]">
+                  <td className="px-6 py-5">
+                    <p className="text-[10px] text-silver font-mono">{order.formattedDate}</p>
+                    <p className="text-[10px] text-silver/40 font-mono">{order.formattedTime}</p>
+                  </td>
+                  <td className="px-6 py-5">
+                    <p className="text-sm font-bold text-primary uppercase tracking-widest">{order.table}</p>
+                  </td>
+                  <td className="px-6 py-5">
+                    <div className="space-y-1">
+                      {order.items.map((item: any, idx: number) => (
+                        <p key={idx} className="text-[10px] text-silver/60">
+                          <span className="text-gold font-bold">{item.quantity}x</span> {item.name}
+                        </p>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="px-6 py-5 text-[10px] text-silver font-bold uppercase">{order.staffName || "System"}</td>
+                  <td className="px-6 py-5 font-serif text-gold font-black">₦{order.total?.toLocaleString()}</td>
+                  <td className="px-6 py-5">
+                    <Badge color={order.status === 'paid' ? 'emerald' : 'gold'}>{order.status.replace('-', ' ').toUpperCase()}</Badge>
+                  </td>
+                  <td className="px-6 py-5 text-right">
+                    <button 
+                      onClick={() => {
+                        setConfirmState({
+                          isOpen: true,
+                          title: "Purge Transaction Record",
+                          message: `CRITICAL: This will permanently delete the transaction record for ${order.table} (₦${order.total?.toLocaleString()}). This action is irreversible. Proceed?`,
+                          type: "danger",
+                          onConfirm: async () => {
+                            await deleteDoc(doc(db, "orders", order.id));
+                            await logAudit("ORDER_DELETE", { orderId: order.id, table: order.table, total: order.total }, 'sales');
+                            showToast("Transaction record purged");
+                          }
+                        });
+                      }} 
+                      className="p-2 text-red-400/20 hover:text-red-400 transition-all"
+                    >
+                      <TrashIcon className="w-5 h-5" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </LuxuryTable>
           </div>
         )}
 

@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --port=3000 --host=0.0.0.0",
-    "build": "vite build",
-    "start": "node server.js",
+    "dev": "node api.js && vite --port=3000 --host=0.0.0.0",
+    "build": "node api.js && vite build",
+    "start": "node api.js && node server.js",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit"
@@ -24,6 +24,7 @@
     "helmet": "^8.1.0",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
+    "node-fetch": "^3.3.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.14.1",

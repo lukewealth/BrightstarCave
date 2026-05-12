@@ -422,49 +422,97 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
         </header>
 
         {view === 'pos' && (
-          <div className="flex flex-col xl:flex-row gap-10">
-            <div className="flex-1 space-y-8">
-              <SectionTitle subtitle="Departmental Selection" title="Master Menu" />
-              <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
+          <div className="flex flex-col xl:flex-row gap-10 items-start">
+            <div className="flex-1 space-y-8 w-full">
+              <div className="flex justify-between items-end">
+                <SectionTitle subtitle="Departmental Selection" title="Master Menu" />
+                <Badge color="silver">{filteredData.pos.length} Resources Available</Badge>
+              </div>
+              <div className={`grid grid-cols-1 md:grid-cols-2 ${cart.length > 0 ? '2xl:grid-cols-3' : '2xl:grid-cols-4'} gap-6 transition-all duration-500`}>
                 {filteredData.pos.map(item => (
-                  <GlassCard key={item.id} className="p-6 space-y-4 hover:border-gold/30 transition-all cursor-pointer group" onClick={() => { addToCart(item); showToast(`${item.name} added`); }}>
+                  <GlassCard 
+                    key={item.id} 
+                    className={`p-6 space-y-4 hover:border-gold/50 transition-all cursor-pointer group relative overflow-hidden ${item.stock <= 0 ? 'opacity-50 grayscale pointer-events-none' : ''}`} 
+                    onClick={() => { addToCart(item); showToast(`${item.name} added`); }}
+                  >
+                    <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <PlusIcon className="w-5 h-5 text-gold" />
+                    </div>
                     <div className="flex justify-between items-start">
-                      <Badge color={item.stock > 0 ? 'gold' : 'red'}>{item.stock} Unit</Badge>
+                      <Badge color={item.stock > 10 ? 'emerald' : item.stock > 0 ? 'gold' : 'red'}>
+                        {item.stock > 0 ? `${item.stock} Unit` : 'Out of Stock'}
+                      </Badge>
                       <p className="text-lg font-black text-gold">₦{item.price.toLocaleString()}</p>
                     </div>
-                    <h4 className="text-lg font-serif text-white uppercase group-hover:text-gold transition-colors">{item.name}</h4>
-                    <p className="text-[10px] text-silver/40 uppercase font-black tracking-widest">{item.category}</p>
+                    <div className="space-y-1">
+                      <h4 className="text-lg font-serif text-white uppercase group-hover:text-gold transition-colors line-clamp-1">{item.name}</h4>
+                      <p className="text-[9px] text-silver/40 uppercase font-black tracking-widest">{item.category}</p>
+                    </div>
                   </GlassCard>
                 ))}
               </div>
             </div>
             
-            <aside className="w-full xl:w-96 space-y-8">
-              <GlassCard className="p-8 space-y-8 border-gold/10">
-                <h3 className="text-xs font-black uppercase tracking-widest flex items-center gap-4"><ShoppingBagIcon className="w-5 h-5 text-gold" /> Current Cart</h3>
-                <div className="space-y-4 max-h-[400px] overflow-y-auto no-scrollbar">
-                  {cart.map(item => (
-                    <div key={item.id} className="flex justify-between items-center p-4 bg-white/5 rounded-2xl">
-                      <div className="space-y-1">
-                        <p className="text-[11px] font-bold text-white uppercase">{item.name}</p>
-                        <p className="text-[10px] text-gold font-mono">₦{(item.price * item.quantity).toLocaleString()}</p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="text-silver hover:text-white">-</button>
-                        <span className="text-xs font-black w-4 text-center">{item.quantity}</span>
-                        <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="text-silver hover:text-white">+</button>
-                      </div>
+            <AnimatePresence mode="wait">
+              {cart.length > 0 && (
+                <motion.aside 
+                  initial={{ opacity: 0, x: 50, width: 0 }}
+                  animate={{ opacity: 1, x: 0, width: '100%', maxWidth: '384px' }}
+                  exit={{ opacity: 0, x: 50, width: 0 }}
+                  className="w-full xl:w-96 space-y-8 sticky top-0"
+                >
+                  <GlassCard className="p-8 space-y-8 border-gold/20 shadow-2xl shadow-gold/5">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-xs font-black uppercase tracking-widest flex items-center gap-4">
+                        <ShoppingBagIcon className="w-5 h-5 text-gold" /> 
+                        Cart <span className="text-silver/40">({cart.length})</span>
+                      </h3>
+                      <button onClick={clearCart} className="text-[8px] uppercase font-black text-red-400/60 hover:text-red-400 transition-colors">Clear All</button>
                     </div>
-                  ))}
-                  {cart.length === 0 && <p className="text-[10px] text-center text-silver/40 py-10 uppercase tracking-widest">Cart is empty</p>}
-                </div>
-                <div className="pt-8 border-t border-white/5 space-y-6">
-                  <SilverInput placeholder="Table / Room ID" icon={TableCellsIcon} value={tableId} onChange={(e: any) => setTableId(e.target.value)} />
-                  <div className="flex justify-between items-end"><span className="text-[10px] uppercase tracking-widest text-silver/40">Total Value</span><span className="text-3xl font-serif text-gold font-black">₦{totalAmount.toLocaleString()}</span></div>
-                  <GoldButton className="w-full py-4 text-[10px] uppercase font-black tracking-widest" disabled={cart.length === 0 || !tableId} onClick={handleInitiateOrder}>Checkout Order</GoldButton>
-                </div>
-              </GlassCard>
-            </aside>
+                    
+                    <div className="space-y-4 max-h-[400px] overflow-y-auto no-scrollbar">
+                      {cart.map(item => (
+                        <motion.div 
+                          layout
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          key={item.id} 
+                          className="flex justify-between items-center p-5 bg-white/[0.03] border border-white/5 rounded-2xl hover:border-white/10 transition-all"
+                        >
+                          <div className="space-y-1">
+                            <p className="text-[11px] font-bold text-white uppercase">{item.name}</p>
+                            <p className="text-[10px] text-gold font-mono">₦{(item.price * item.quantity).toLocaleString()}</p>
+                          </div>
+                          <div className="flex items-center gap-4 bg-black/40 rounded-xl px-3 py-2 border border-white/5">
+                            <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="text-silver hover:text-gold transition-colors font-bold">-</button>
+                            <span className="text-xs font-black w-4 text-center">{item.quantity}</span>
+                            <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="text-silver hover:text-gold transition-colors font-bold">+</button>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+
+                    <div className="pt-8 border-t border-white/5 space-y-6">
+                      <div className="space-y-2">
+                        <label className="text-[9px] uppercase font-black text-silver/40 ml-2 tracking-widest">Identification</label>
+                        <SilverInput placeholder="Table / Room / Name" icon={TableCellsIcon} value={tableId} onChange={(e: any) => setTableId(e.target.value)} />
+                      </div>
+                      <div className="flex justify-between items-end p-4 bg-gold/5 rounded-2xl border border-gold/10">
+                        <span className="text-[9px] uppercase tracking-widest text-gold/60 font-black">Total Settlement</span>
+                        <span className="text-3xl font-serif text-gold font-black">₦{totalAmount.toLocaleString()}</span>
+                      </div>
+                      <GoldButton 
+                        className="w-full py-5 text-[10px] uppercase font-black tracking-widest shadow-2xl shadow-gold/10" 
+                        disabled={cart.length === 0 || !tableId} 
+                        onClick={handleInitiateOrder}
+                      >
+                        Transmit Order
+                      </GoldButton>
+                    </div>
+                  </GlassCard>
+                </motion.aside>
+              )}
+            </AnimatePresence>
           </div>
         )}
 

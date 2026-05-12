@@ -60,7 +60,8 @@ import {
   LuxuryTable, 
   TabSystem, 
   Toast,
-  LionLoader
+  LionLoader,
+  ConfirmModal
 } from "../components/design-system/Primitive";
 import { useNavigate } from "react-router-dom";
 import { CATEGORIES } from "../lib/constants";

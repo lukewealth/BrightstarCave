@@ -59,7 +59,8 @@ import {
   GlassModal, 
   LuxuryTable, 
   TabSystem, 
-  Toast 
+  Toast,
+  LionLoader
 } from "../components/design-system/Primitive";
 import { useNavigate } from "react-router-dom";
 import { CATEGORIES } from "../lib/constants";
@@ -345,6 +346,14 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
     { id: 'accounting', icon: BanknotesIcon, label: 'Financials' },
     { id: 'audits', icon: ClipboardDocumentCheckIcon, label: 'Master Audit' },
   ];
+
+  if (user && !role) {
+    return (
+      <div className="h-full flex items-center justify-center bg-primary">
+        <LionLoader size="lg" />
+      </div>
+    );
+  }
 
   if (role !== 'admin') {
     return (

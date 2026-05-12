@@ -11,6 +11,7 @@ import AdminPortal from "./pages/AdminPortal";
 import StaffPortal from "./pages/StaffPortal";
 import ServicePolicy from "./pages/ServicePolicy";
 import DataProtection from "./pages/DataProtection";
+import { LionLoader } from "./components/design-system/Primitive";
 
 // Security Gatekeeper
 const AuthGuard = ({ 
@@ -60,7 +61,11 @@ function App() {
     setTheme(next);
   };
 
-  if (loading) return null;
+  if (loading) return (
+    <div className="min-h-screen bg-primary flex items-center justify-center">
+      <LionLoader size="lg" />
+    </div>
+  );
 
   return (
     <CartProvider>

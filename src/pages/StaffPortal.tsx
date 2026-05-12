@@ -48,7 +48,8 @@ import {
   GoldButton,
   SilverInput,
   EmeraldButton,
-  GlassModal
+  GlassModal,
+  LionLoader
 } from "../components/design-system/Primitive";
 import { useCart } from "../lib/cart-context";
 import { menuItems, MenuItem } from "../data/menu";
@@ -245,6 +246,14 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
     if (role === 'admin' || role === 'staff') return inventory;
     return inventory.filter(i => deptCategories.includes(i.category));
   }, [inventory, role, deptCategories]);
+
+  if (user && !role) {
+    return (
+      <div className="h-full flex items-center justify-center bg-primary">
+        <LionLoader size="lg" />
+      </div>
+    );
+  }
 
   if (!role || role === 'guest') {
     return (

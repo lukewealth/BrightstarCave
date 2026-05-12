@@ -1,7 +1,8 @@
 import { useState, FormEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Mail, Lock, User, ShieldCheck, Loader2, ArrowRight, ChevronRight, UserCircle } from "lucide-react";
+import { X, Mail, Lock, User, ShieldCheck, ArrowRight, ChevronRight, UserCircle } from "lucide-react";
 import { loginWithEmail, signInWithGoogle } from "../lib/firebase";
+import { LionLoader } from "./design-system/Primitive";
 
 interface LoginPopupProps {
   isOpen: boolean;
@@ -37,12 +38,7 @@ export const LoginPopup = ({ isOpen, onClose }: LoginPopupProps) => {
 
   const selectRole = (r: "guest" | "staff" | "admin") => {
     setRole(r);
-    if (r === "guest") {
-      // Direct action for guest if preferred, or proceed to info
-      setStep("login");
-    } else {
-      setStep("login");
-    }
+    setStep("login");
   };
 
   return (
@@ -193,7 +189,7 @@ export const LoginPopup = ({ isOpen, onClose }: LoginPopupProps) => {
                         ${role === 'guest' ? 'bg-gold text-black shadow-gold/10' : 'bg-emerald text-black shadow-emerald/10'}`}
                     >
                       {isLoading ? (
-                        <Loader2 className="animate-spin" size={20} />
+                        <LionLoader size="sm" />
                       ) : (
                         <>Establish Baseline <ArrowRight size={18} /></>
                       )}

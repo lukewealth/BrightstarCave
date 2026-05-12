@@ -47,6 +47,98 @@ interface PrimitiveProps {
   key?: Key;
 }
 
+export const LionLoader = ({ className = "", size = "md" }: { className?: string, size?: "sm" | "md" | "lg" }) => {
+  const sizeClass = size === "sm" ? "w-12 h-12" : size === "lg" ? "w-48 h-48" : "w-32 h-32";
+  
+  return (
+    <div className={`flex flex-col items-center justify-center space-y-6 ${className}`}>
+      <motion.div
+        animate={{ 
+          scale: [1, 1.05, 1],
+        }}
+        transition={{ 
+          duration: 3,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }}
+        className={`relative ${sizeClass}`}
+      >
+        <svg viewBox="0 0 100 100" className="w-full h-full text-gold fill-none">
+          {/* Outer Ring */}
+          <motion.circle
+            cx="50" cy="50" r="45"
+            stroke="currentColor"
+            strokeWidth="0.5"
+            strokeDasharray="4 8"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+            className="opacity-30"
+          />
+          
+          {/* Lion Head - High Stylized */}
+          <motion.g
+            initial={{ opacity: 0.5 }}
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            {/* Mane Spikes */}
+            {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((angle, i) => (
+              <motion.path
+                key={angle}
+                d={`M 50 50 L ${50 + 40 * Math.cos(angle * Math.PI / 180)} ${50 + 40 * Math.sin(angle * Math.PI / 180)}`}
+                stroke="currentColor"
+                strokeWidth="1"
+                strokeLinecap="round"
+                animate={{ pathLength: [0, 1, 0] }}
+                transition={{ duration: 2.5, repeat: Infinity, delay: i * 0.1 }}
+                className="opacity-40"
+              />
+            ))}
+            
+            {/* Lion Face Geometry */}
+            <path d="M50 30 L35 45 L42 45 L42 55 L58 55 L58 45 L65 45 Z" fill="currentColor" className="opacity-80" />
+            <path d="M42 55 L50 65 L58 55" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+            <path d="M35 45 C30 60 40 75 50 75 C60 75 70 60 65 45" stroke="currentColor" strokeWidth="1" />
+            
+            {/* Eyes */}
+            <circle cx="43" cy="48" r="1.5" fill="black" />
+            <circle cx="57" cy="48" r="1.5" fill="black" />
+          </motion.g>
+        </svg>
+
+        {/* Actual Illustration Overlay */}
+        <div className="absolute inset-0 flex items-center justify-center p-[20%]">
+          <motion.img 
+            src="/logo.jpg" 
+            alt="Lion" 
+            className="w-full h-full object-contain rounded-full opacity-40 mix-blend-screen"
+            animate={{ 
+              opacity: [0.3, 0.6, 0.3],
+              scale: [1, 1.02, 1]
+            }}
+            transition={{ duration: 3, repeat: Infinity }}
+          />
+        </div>
+        
+        {/* Central Glow */}
+        <div className="absolute inset-0 bg-gold/10 blur-2xl rounded-full" />
+      </motion.div>
+      
+      {size !== "sm" && (
+        <div className="flex flex-col items-center gap-2">
+          <motion.p 
+            animate={{ opacity: [0.4, 1, 0.4] }}
+            transition={{ duration: 2, repeat: Infinity }}
+            className="text-[9px] uppercase tracking-[0.5em] text-gold font-black"
+          >
+            Synchronizing Sanctuary
+          </motion.p>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const OptimizedImage = ({ 
   src, 
   alt, 
@@ -121,7 +213,7 @@ export const OptimizedImage = ({
             exit={{ opacity: 0 }}
             className="absolute inset-0 z-10 flex items-center justify-center bg-black/20 backdrop-blur-sm"
           >
-            <div className="w-10 h-10 border-2 border-gold/10 border-t-gold rounded-full animate-spin" />
+            <LionLoader size="sm" />
           </motion.div>
         )}
       </AnimatePresence>

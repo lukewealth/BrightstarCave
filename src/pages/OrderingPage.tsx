@@ -39,7 +39,8 @@ import {
   SectionTitle, 
   GlassModal, 
   TabSystem, 
-  Toast 
+  Toast,
+  LionLoader
 } from "../components/design-system/Primitive";
 import { trackPurchase, trackEvent, Events } from "../lib/analytics";
 import { useCart } from "../lib/cart-context";
@@ -48,6 +49,7 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
   const { cart, addToCart, updateQuantity, clearCart, totalAmount } = useCart();
   const [role, setRole] = useState<UserRole | null>(null);
   const [displayMenu, setDisplayMenu] = useState<MenuItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -60,6 +62,21 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
   const [timeLeft, setTimeLeft] = useState<number>(120);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error', visible: boolean }>({ message: '', type: 'success', visible: false });
 
+  // Confirmation States
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type: 'default' | 'danger';
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+    type: 'default'
+  });
+
   // Fetch Dynamic Menu and Staff List
   useEffect(() => {
     const unsubMenu = onSnapshot(collection(db, "menu"), (snap) => {
@@ -68,6 +85,11 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
       } else {
         setDisplayMenu(menuItems);
       }
+      setLoading(false);
+    }, (error) => {
+      console.error("Menu fetch error:", error);
+      setDisplayMenu(menuItems);
+      setLoading(false);
     });
 
     const unsubStaff = onSnapshot(query(collection(db, "admins"), where("role", "in", ["staff_bar", "staff_waiter", "staff", "admin"])), (snap) => {
@@ -84,6 +106,12 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
       setRole('guest');
     }
   }, [user]);
+
+  if (loading) return (
+    <div className="min-h-[60vh] flex items-center justify-center">
+      <LionLoader />
+    </div>
+  );
 
   // Comprehensive Department Categorization Logic
   const deptCategories = useMemo(() => {

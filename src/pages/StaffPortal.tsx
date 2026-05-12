@@ -21,7 +21,8 @@ import {
   TableCellsIcon,
   IdentificationIcon,
   ArrowLeftOnRectangleIcon,
-  TrashIcon
+  TrashIcon,
+  ArrowTrendingUpIcon
 } from "@heroicons/react/24/outline";
 import { User } from "firebase/auth";
 import { 

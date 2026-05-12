@@ -150,12 +150,31 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
 
     const paidOrders = relevantOrders.filter(o => o.status === 'paid' && o.createdAt?.toDate() >= today);
     const totalRevenue = paidOrders.reduce((acc, curr) => acc + (curr.total || 0), 0);
+    const personalRevenue = paidOrders
+      .filter(o => o.staffId === user?.uid)
+      .reduce((acc, curr) => acc + (curr.total || 0), 0);
+    
     const activeOrders = relevantOrders.filter(o => o.status === 'pending-payment').length;
     
     const relevantInventory = role === 'admin' ? inventory : inventory.filter(i => deptCategories.includes(i.category));
     const lowStock = relevantInventory.filter(i => i.stock < 10).length;
 
-    return { totalRevenue, activeOrders, lowStock, totalOrders: paidOrders.length, relevantOrders };
+    const topSelling = [...relevantInventory]
+      .sort((a, b) => (b.soldCount || 0) - (a.soldCount || 0))
+      .slice(0, 5);
+
+    const recentSettlements = paidOrders.slice(0, 5);
+
+    return { 
+      totalRevenue, 
+      personalRevenue,
+      activeOrders, 
+      lowStock, 
+      totalOrders: paidOrders.length, 
+      relevantOrders,
+      topSelling,
+      recentSettlements
+    };
   }, [orders, inventory, role, deptCategories, departmentType, user?.uid]);
 
   // Filtered Lists
@@ -450,37 +469,83 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
         )}
 
         {view === 'dashboard' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-             <GlassCard className="p-10 space-y-6">
-                <div className="flex justify-between items-start">
-                   <div className="p-4 bg-gold/10 rounded-2xl border border-gold/20"><BanknotesIcon className="w-8 h-8 text-gold" /></div>
-                   <Badge color="gold">Verified</Badge>
+          <div className="space-y-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+              <GlassCard className="p-8 space-y-4">
+                  <p className="text-[8px] uppercase tracking-widest text-gold font-black">Dept Revenue (Today)</p>
+                  <p className="text-4xl font-serif font-black">₦{stats.totalRevenue.toLocaleString()}</p>
+                  <Badge color="gold">Verified Settlements</Badge>
+              </GlassCard>
+              <GlassCard className="p-8 space-y-4">
+                  <p className="text-[8px] uppercase tracking-widest text-emerald font-black">Personal Contribution</p>
+                  <p className="text-4xl font-serif font-black">₦{stats.personalRevenue.toLocaleString()}</p>
+                  <Badge color="emerald">Operator Performance</Badge>
+              </GlassCard>
+              <GlassCard className="p-8 space-y-4">
+                  <p className="text-[8px] uppercase tracking-widest text-purple-400 font-black">Settled Audits</p>
+                  <p className="text-4xl font-serif font-black">{stats.totalOrders}</p>
+                  <Badge color="purple">Total Transmissions</Badge>
+              </GlassCard>
+              <GlassCard className="p-8 space-y-4 border-red-500/10">
+                  <p className="text-[8px] uppercase tracking-widest text-red-500 font-black">Low Stock Alert</p>
+                  <p className="text-4xl font-serif font-black">{stats.lowStock}</p>
+                  <Badge color="red">Resource Warning</Badge>
+              </GlassCard>
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+              <GlassCard className="p-10 space-y-8">
+                <div className="flex justify-between items-center">
+                  <SectionTitle subtitle="Movement Analytics" title="Top Performing Resources" />
+                  <ArrowTrendingUpIcon className="w-8 h-8 text-gold opacity-20" />
                 </div>
-                <div>
-                   <p className="text-sm font-bold text-white uppercase tracking-widest mb-1">Total Revenue</p>
-                   <p className="text-4xl font-serif text-gold font-black">₦{stats.totalRevenue.toLocaleString()}</p>
+                <div className="space-y-6">
+                  {stats.topSelling.map((item, idx) => (
+                    <div key={item.id} className="flex items-center justify-between p-4 bg-white/[0.02] border border-white/[0.05] rounded-2xl group hover:border-gold/20 transition-all">
+                      <div className="flex items-center gap-6">
+                        <span className="text-2xl font-serif font-black text-silver/20">{idx + 1}</span>
+                        <div>
+                          <p className="text-sm font-bold text-white uppercase tracking-widest">{item.name}</p>
+                          <p className="text-[10px] text-silver/40 uppercase font-black">{item.category}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-serif text-gold font-black">{item.soldCount || 0}</p>
+                        <p className="text-[8px] text-silver/40 uppercase font-black tracking-widest">Units Sold</p>
+                      </div>
+                    </div>
+                  ))}
+                  {stats.topSelling.length === 0 && (
+                    <p className="text-center text-[10px] text-silver/40 uppercase py-10">No movement detected</p>
+                  )}
                 </div>
-             </GlassCard>
-             <GlassCard className="p-10 space-y-6">
-                <div className="flex justify-between items-start">
-                   <div className="p-4 bg-emerald/10 rounded-2xl border border-emerald/20"><CheckCircleIcon className="w-8 h-8 text-emerald" /></div>
-                   <Badge color="emerald">Efficiency</Badge>
+              </GlassCard>
+
+              <GlassCard className="p-10 space-y-8">
+                <SectionTitle subtitle="Traceability" title="Recent Activity" />
+                <div className="space-y-4">
+                  {stats.recentSettlements.map((order) => (
+                    <div key={order.id} className="flex gap-4 items-start p-4 border-b border-white/5 last:border-0 group hover:bg-white/[0.02] transition-all rounded-xl">
+                      <div className="mt-1 w-2 h-2 rounded-full shrink-0 bg-gold" />
+                      <div className="space-y-1 flex-1">
+                        <div className="flex justify-between">
+                          <p className="text-[10px] font-black uppercase text-white tracking-widest">Order {order.table}</p>
+                          <span className="text-[8px] text-silver/40 font-mono">{order.formattedTime}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <p className="text-[10px] text-silver/60 italic">{order.items.length} items settled</p>
+                          <p className="text-xs font-serif text-gold font-black">₦{order.total?.toLocaleString()}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {stats.recentSettlements.length === 0 && (
+                    <p className="text-center text-[10px] text-silver/40 uppercase py-10">No recent activity</p>
+                  )}
+                  <button onClick={() => setView('accounting')} className="w-full py-4 text-[9px] uppercase font-black tracking-widest text-gold hover:bg-gold/5 rounded-2xl transition-all">View All Ledger Logs</button>
                 </div>
-                <div>
-                   <p className="text-sm font-bold text-white uppercase tracking-widest mb-1">Settled Audits</p>
-                   <p className="text-4xl font-serif text-white font-black">{stats.totalOrders} Transmissions</p>
-                </div>
-             </GlassCard>
-             <GlassCard className="p-10 space-y-6">
-                <div className="flex justify-between items-start">
-                   <div className="p-4 bg-red-500/10 rounded-2xl border border-red-500/20"><ExclamationTriangleIcon className="w-8 h-8 text-red-500" /></div>
-                   <Badge color="red">Attention</Badge>
-                </div>
-                <div>
-                   <p className="text-sm font-bold text-white uppercase tracking-widest mb-1">Low Resource Warning</p>
-                   <p className="text-4xl font-serif text-white font-black">{stats.lowStock} Skus</p>
-                </div>
-             </GlassCard>
+              </GlassCard>
+            </div>
           </div>
         )}
 

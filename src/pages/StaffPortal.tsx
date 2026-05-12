@@ -407,7 +407,7 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
             <div className="flex-1 space-y-8">
               <SectionTitle subtitle="Departmental Selection" title="Master Menu" />
               <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
-                {filteredPOSMenu.map(item => (
+                {filteredData.pos.map(item => (
                   <GlassCard key={item.id} className="p-6 space-y-4 hover:border-gold/30 transition-all cursor-pointer group" onClick={() => { addToCart(item); showToast(`${item.name} added`); }}>
                     <div className="flex justify-between items-start">
                       <Badge color={item.stock > 0 ? 'gold' : 'red'}>{item.stock} Unit</Badge>

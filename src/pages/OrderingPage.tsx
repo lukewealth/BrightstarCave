@@ -338,11 +338,32 @@ export const OrderingPage = ({ user }: { user: User | null }) => {
             <button onClick={() => setShowCheckout(false)} className="py-5 rounded-2xl bg-white/5 border border-white/10 text-silver hover:text-primary transition-all uppercase text-[9px] font-black tracking-widest">Back to Cart</button>
             <EmeraldButton onClick={handleConfirmPayment} className="py-5" disabled={isSubmitting}><span className="text-[9px] uppercase font-black tracking-widest">Authorize Paid</span></EmeraldButton>
           </div>
-          <button onClick={() => handleCancelOrder()} className="w-full py-4 text-red-500/40 hover:text-red-500 transition-all uppercase text-[8px] font-black tracking-[0.4em]">Discard & Purge Record</button>
+          <button 
+            onClick={() => {
+              setConfirmState({
+                isOpen: true,
+                title: "Cancel Transmission",
+                message: "This will purge your current order request from the master queue. Continue?",
+                type: "danger",
+                onConfirm: () => handleCancelOrder("Guest Purge Requested")
+              });
+            }} 
+            className="w-full py-4 text-red-500/40 hover:text-red-500 transition-all uppercase text-[8px] font-black tracking-[0.4em]"
+          >
+            Discard & Purge Record
+          </button>
           <p className="text-[8px] text-center text-silver/20 uppercase tracking-[0.3em] font-black">All transmissions are permanent and audited by the master protocol</p>
         </div>
       </GlassModal>
       <Toast message={toast.message} type={toast.type} isVisible={toast.visible} onClose={() => setToast({ ...toast, visible: false })} />
+      <ConfirmModal 
+        isOpen={confirmState.isOpen}
+        onClose={() => setConfirmState({ ...confirmState, isOpen: false })}
+        onConfirm={confirmState.onConfirm}
+        title={confirmState.title}
+        message={confirmState.message}
+        type={confirmState.type}
+      />
     </div>
   );
 };

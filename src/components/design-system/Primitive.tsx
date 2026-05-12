@@ -230,7 +230,7 @@ export const SectionTitle = ({ subtitle, title }: { subtitle: string, title: str
   </div>
 );
 
-export const GlassModal = ({ isOpen, onClose, title, children }: { isOpen: boolean, onClose: () => void, title: string, children: ReactNode }) => (
+export const GlassModal = ({ isOpen, onClose, title, children, maxWidth = "max-w-2xl" }: { isOpen: boolean, onClose: () => void, title: string, children: ReactNode, maxWidth?: string }) => (
   <AnimatePresence>
     {isOpen && (
       <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 lg:p-6 bg-black/90 backdrop-blur-xl">
@@ -245,7 +245,7 @@ export const GlassModal = ({ isOpen, onClose, title, children }: { isOpen: boole
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative w-full max-w-2xl bg-secondary border border-white/5 rounded-[24px] lg:rounded-[40px] shadow-2xl overflow-hidden"
+          className={`relative w-full ${maxWidth} bg-secondary border border-white/5 rounded-[24px] lg:rounded-[40px] shadow-2xl overflow-hidden`}
         >
           <div className="px-6 lg:px-10 py-5 lg:py-8 border-b border-white/5 flex justify-between items-center bg-black/20">
             <h3 className="text-lg lg:text-xl font-serif text-primary uppercase tracking-widest">{title}</h3>
@@ -295,10 +295,54 @@ export const TabSystem = ({ tabs, activeTab, onChange }: { tabs: { id: string, l
   </div>
 );
 
+export const ConfirmModal = ({ 
+  isOpen, 
+  onClose, 
+  onConfirm, 
+  title, 
+  message, 
+  confirmText = "Confirm Action", 
+  cancelText = "Cancel",
+  type = "default" 
+}: { 
+  isOpen: boolean, 
+  onClose: () => void, 
+  onConfirm: () => void, 
+  title: string, 
+  message: string,
+  confirmText?: string,
+  cancelText?: string,
+  type?: "default" | "danger"
+}) => (
+  <GlassModal isOpen={isOpen} onClose={onClose} title={title} maxWidth="max-w-md">
+    <div className="space-y-8 text-center">
+      <div className="space-y-2">
+        <p className="text-silver/60 text-sm leading-relaxed">{message}</p>
+      </div>
+      <div className="flex flex-col gap-3">
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => { onConfirm(); onClose(); }}
+          className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-2xl transition-all ${type === 'danger' ? 'bg-red-500 text-white shadow-red-500/20' : 'bg-gold text-black shadow-gold/20'}`}
+        >
+          {confirmText}
+        </motion.button>
+        <button 
+          onClick={onClose}
+          className="w-full py-4 text-[9px] uppercase font-black tracking-widest text-silver/40 hover:text-silver transition-colors"
+        >
+          {cancelText}
+        </button>
+      </div>
+    </div>
+  </GlassModal>
+);
+
 export const Toast = ({ message, type = "success", isVisible, onClose }: { message: string, type?: "success" | "error", isVisible: boolean, onClose: () => void }) => {
   useEffect(() => {
     if (isVisible) {
-      const timer = setTimeout(onClose, 3000);
+      const timer = setTimeout(onClose, 4000);
       return () => clearTimeout(timer);
     }
   }, [isVisible, onClose]);
@@ -307,13 +351,27 @@ export const Toast = ({ message, type = "success", isVisible, onClose }: { messa
     <AnimatePresence>
       {isVisible && (
         <motion.div
-          initial={{ opacity: 0, y: 50, scale: 0.9 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 20, scale: 0.9 }}
-          className={`fixed bottom-6 lg:bottom-10 left-1/2 -translate-x-1/2 z-[250] px-6 lg:px-8 py-3 lg:py-4 rounded-xl lg:rounded-2xl border backdrop-blur-xl shadow-2xl flex items-center gap-3 lg:gap-4 ${type === 'success' ? 'bg-emerald/10 border-emerald/20 text-emerald' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}
+          initial={{ opacity: 0, y: 50, x: "-50%", scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, x: "-50%", scale: 1 }}
+          exit={{ opacity: 0, y: 20, x: "-50%", scale: 0.9 }}
+          className={`fixed bottom-6 lg:bottom-10 left-1/2 z-[250] px-6 lg:px-8 py-4 lg:py-5 rounded-2xl lg:rounded-3xl border backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex items-center gap-4 min-w-[320px] overflow-hidden ${type === 'success' ? 'bg-emerald/10 border-emerald/20 text-emerald' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}
         >
-          <div className={`w-1.5 lg:w-2 h-1.5 lg:h-2 rounded-full animate-pulse ${type === 'success' ? 'bg-emerald' : 'bg-red-500'}`} />
-          <span className="text-[8px] lg:text-[10px] uppercase tracking-[0.1em] lg:tracking-[0.2em] font-black">{message}</span>
+          {/* Progress Bar */}
+          <motion.div 
+            initial={{ width: "100%" }}
+            animate={{ width: "0%" }}
+            transition={{ duration: 4, ease: "linear" }}
+            className={`absolute bottom-0 left-0 h-1 ${type === 'success' ? 'bg-emerald/40' : 'bg-red-500/40'}`}
+          />
+          
+          <div className={`w-2 h-2 rounded-full animate-pulse shadow-[0_0_10px_currentColor] ${type === 'success' ? 'bg-emerald' : 'bg-red-500'}`} />
+          <div className="flex-1 space-y-0.5">
+            <p className="text-[10px] lg:text-[11px] uppercase tracking-[0.1em] lg:tracking-[0.2em] font-black leading-none">{message}</p>
+            <p className="text-[8px] uppercase tracking-widest opacity-40 font-bold">{type === 'success' ? 'Authorized Sequence' : 'Protocol Interrupt'}</p>
+          </div>
+          <button onClick={onClose} className="p-1 hover:bg-white/5 rounded-lg transition-colors">
+            <XMarkIcon className="w-4 h-4 opacity-40 hover:opacity-100" />
+          </button>
         </motion.div>
       )}
     </AnimatePresence>

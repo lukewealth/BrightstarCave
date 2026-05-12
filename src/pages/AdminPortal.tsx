@@ -433,10 +433,10 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
             </button>
           </div>
           <div className="flex flex-col sm:flex-row gap-6 items-end w-full xl:w-auto">
-            {['inventory', 'menu', 'staff', 'audits', 'accounting'].includes(view) && (
+            {['inventory', 'menu', 'staff', 'audits', 'accounting', 'orders'].includes(view) && (
               <div className="relative w-full sm:w-64 group">
                 <SilverInput 
-                  placeholder={`Search ${view}...`} 
+                  placeholder={`Search ${view === 'orders' ? 'Queue' : view}...`} 
                   icon={MagnifyingGlassIcon} 
                   value={(searchQueries as any)[view]} 
                   onChange={(e: any) => setSearchQueries({ ...searchQueries, [view]: e.target.value })} 
@@ -610,7 +610,19 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
                   <div className="space-y-1"><p className="text-sm font-bold text-primary truncate tracking-widest">{member.email}</p><p className="text-[8px] uppercase tracking-[0.3em] text-silver/40 font-black">Operator Key: {member.id.slice(-8)}</p></div>
                   <div className="flex gap-4 pt-6 border-t border-white/5">
                     <button onClick={() => { setSelectedItem(member); setModalType('staff'); setIsModalOpen(true); }} className="flex-1 py-3 text-[9px] uppercase font-black tracking-widest text-silver hover:text-gold border border-white/10 rounded-2xl transition-all">Credentials</button>
-                    <button onClick={async () => { if(window.confirm("Revoke access?")) { await deleteDoc(doc(db, "admins", member.id)); await logAudit("ACCESS_REVOKED", { email: member.email }, 'staff'); showToast("Access revoked"); } }} className="p-3 text-red-400/20 hover:text-red-400 rounded-2xl transition-all"><TrashIcon className="w-5 h-5" /></button>
+                    <button onClick={() => {
+                      setConfirmState({
+                        isOpen: true,
+                        title: "Revoke Access Protocol",
+                        message: `This will terminate all operational credentials for ${member.email}. Proceed with revocation?`,
+                        type: "danger",
+                        onConfirm: async () => {
+                          await deleteDoc(doc(db, "admins", member.id)); 
+                          await logAudit("ACCESS_REVOKED", { email: member.email }, 'staff'); 
+                          showToast("Access revoked");
+                        }
+                      });
+                    }} className="p-3 text-red-400/20 hover:text-red-400 rounded-2xl transition-all"><TrashIcon className="w-5 h-5" /></button>
                   </div>
                 </GlassCard>
               ))}
@@ -712,6 +724,14 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
       </GlassModal>
 
       <Toast message={toast.message} type={toast.type} isVisible={toast.visible} onClose={() => setToast({ ...toast, visible: false })} />
+      <ConfirmModal 
+        isOpen={confirmState.isOpen}
+        onClose={() => setConfirmState({ ...confirmState, isOpen: false })}
+        onConfirm={confirmState.onConfirm}
+        title={confirmState.title}
+        message={confirmState.message}
+        type={confirmState.type}
+      />
     </div>
   );
 };

@@ -5,29 +5,41 @@ service cloud.firestore {
     // Helper Primitives
     function isSignedIn() { return request.auth != null; }
     
-    // Resilient Admin Check
+    // Resilient Admin Check - Remove hardcoded emails, rely on 'admins' collection
     function isAdmin() { 
       return isSignedIn() && (
-        request.auth.token.email == 'contact@tricode.pro' ||
-        request.auth.token.email == 'brightstarcave@gmail.com' ||
-        (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin')
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) && 
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin'
       ); 
     }
 
     function isStaff() {
       return isSignedIn() && (
         isAdmin() ||
-        request.auth.token.email == 'lukeokagha@gmail.com' ||
         (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) && 
          get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['admin', 'staff', 'staff_bar', 'staff_waiter'])
       );
     }
 
+    // Validation Helpers
+    function isValidStockUpdate() {
+      // Prevent negative stock and ensure numeric
+      return request.resource.data.stock is number && request.resource.data.stock >= 0;
+    }
+    
+    function isValidPrice() {
+      return request.resource.data.price is number && request.resource.data.price >= 0;
+    }
+
     // 1. Menu Collection
     match /menu/{itemId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if (isAdmin() || isStaff()) && 
+                    isValidStockUpdate() && 
+                    isValidPrice() &&
+                    // Ensure only allowed keys are modified by staff
+                    (isAdmin() || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock']));
     }
 
     // 2. Orders Collection
@@ -44,12 +56,16 @@ service cloud.firestore {
         resource.data.staffId == request.auth.uid
       );
       
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() && 
+                    request.resource.data.status == 'pending-payment' &&
+                    request.resource.data.total is number &&
+                    request.resource.data.total >= 0;
       
       allow update: if isSignedIn() && (
         isAdmin() || 
         isStaff() ||
-        (resource.data.userId == request.auth.uid && resource.data.status == 'new')
+        (resource.data.userId == request.auth.uid && resource.data.status == 'pending-payment' &&
+         request.resource.data.status in ['pending-payment', 'cancelled'])
       );
       
       allow delete: if isAdmin();
@@ -59,23 +75,32 @@ service cloud.firestore {
     match /inventory/{itemId} {
       allow read: if isStaff();
       allow write: if isAdmin();
+      allow update: if isStaff() && isValidStockUpdate() && 
+                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock', 'soldCount', 'updatedAt']);
     }
     
     // 4. Personnel Management (admins collection)
     match /admins/{adminId} {
-      // Allow list for admins, or users searching for their own email role check (limited to 1)
-      allow list: if isAdmin() || (isSignedIn() && request.query.limit <= 1);
-      
-      // Allow get for own document or if admin
+      allow list: if isAdmin();
       allow get: if isSignedIn() && (request.auth.uid == adminId || isAdmin());
-      
-      // Allow write for admins to onboard/edit staff
+      // Only admins can change roles or onboard staff
       allow write: if isAdmin();
     }
 
-    // 0. Global Safety Net (moved to end, and made less restrictive for authenticated users where specific rules might be missing)
+    // 5. Audits
+    match /audits/{auditId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn();
+    }
+
+    // 6. FCM Tokens
+    match /fcm_tokens/{tokenId} {
+      allow read, write: if isSignedIn() && request.auth.uid == tokenId;
+    }
+
+    // 0. Global Safety Net - Disabled for security
     match /{document=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if false;
     }
   }
 }

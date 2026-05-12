@@ -37,7 +37,7 @@ import {
   increment,
   getDoc
 } from "firebase/firestore";
-import { db, getUserRole, UserRole, logout } from "../lib/firebase";
+import { db, getUserRole, UserRole, logout, logAudit, validateInput } from "../lib/firebase";
 import { 
   GlassCard, 
   Badge, 
@@ -52,6 +52,7 @@ import {
 import { useCart } from "../lib/cart-context";
 import { menuItems, MenuItem } from "../data/menu";
 import { useNavigate } from "react-router-dom";
+import { DEPARTMENTS, DEPARTMENT_CATEGORIES } from "../lib/constants";
 
 export const StaffPortal = ({ user }: { user: User | null }) => {
   const navigate = useNavigate();
@@ -63,8 +64,12 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
   const [displayMenu, setDisplayMenu] = useState<MenuItem[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [aiInsights, setAiInsights] = useState<string>("");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQueries, setSearchQueries] = useState({
+    pos: "",
+    inventory: "",
+    orders: "",
+    accounting: ""
+  });
   const [tableId, setTableId] = useState("");
   const [showCheckout, setShowCheckout] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -73,13 +78,9 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
 
   // Comprehensive Department Categorization
   const deptCategories = useMemo(() => {
-    if (role === 'staff_bar') {
-      return ["Mocktails", "Cocktails", "Brandy & Cognac", "Whiskey", "Tequila", "Wine", "Beer", "Soft Drinks"];
-    }
-    if (role === 'staff_waiter') {
-      return ["Kitchen Menu", "Exotic Kitchen"];
-    }
-    return []; 
+    if (role === 'staff_bar') return DEPARTMENT_CATEGORIES[DEPARTMENTS.BAR];
+    if (role === 'staff_waiter') return DEPARTMENT_CATEGORIES[DEPARTMENTS.KITCHEN];
+    return DEPARTMENT_CATEGORIES[DEPARTMENTS.ALL]; 
   }, [role]);
 
   const departmentType = useMemo(() => {
@@ -115,41 +116,30 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
     return { totalRevenue, activeOrders, lowStock, totalOrders: paidOrders.length, relevantOrders };
   }, [orders, inventory, role, deptCategories, departmentType, user?.uid]);
 
-  useEffect(() => {
-    if (user) {
-      getUserRole(user.uid, user.email).then(setRole);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (!role || role === 'guest') return;
-
-    const unsubOrders = onSnapshot(query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(200)), (snap) => {
-      setOrders(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-
-    const unsubInv = onSnapshot(collection(db, "inventory"), (snap) => {
-      setInventory(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-
-    const unsubMenu = onSnapshot(collection(db, "menu"), (snap) => {
-      if (!snap.empty) {
-        setDisplayMenu(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as MenuItem[]);
-      } else {
-        setDisplayMenu(menuItems);
-      }
-    });
-
-    return () => { unsubOrders(); unsubInv(); unsubMenu(); };
-  }, [role, user]);
-
-  const filteredPOSMenu = useMemo(() => {
-    return displayMenu.filter(item => {
-      const isInDepartment = role === 'admin' || deptCategories.includes(item.category);
-      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-      return isInDepartment && matchesSearch;
-    });
-  }, [displayMenu, searchQuery, deptCategories, role]);
+  // Filtered Lists
+  const filteredData = useMemo(() => {
+    const q = searchQueries;
+    return {
+      pos: displayMenu.filter(item => {
+        const isInDepartment = role === 'admin' || deptCategories.includes(item.category);
+        const matchesSearch = item.name.toLowerCase().includes(q.pos.toLowerCase()) || item.category.toLowerCase().includes(q.pos.toLowerCase());
+        return isInDepartment && matchesSearch;
+      }),
+      inventory: inventory.filter(i => {
+        const isInDept = role === 'admin' || role === 'staff' || deptCategories.includes(i.category);
+        const matchesSearch = i.name?.toLowerCase().includes(q.inventory.toLowerCase()) || i.category?.toLowerCase().includes(q.inventory.toLowerCase());
+        return isInDept && matchesSearch;
+      }),
+      orders: stats.relevantOrders.filter(o => 
+        o.status === 'pending-payment' && 
+        (o.table.toLowerCase().includes(q.orders.toLowerCase()) || o.userName.toLowerCase().includes(q.orders.toLowerCase()))
+      ),
+      accounting: stats.relevantOrders.filter(o => 
+        o.status === 'paid' && 
+        (o.id.toLowerCase().includes(q.accounting.toLowerCase()) || o.table.toLowerCase().includes(q.accounting.toLowerCase()))
+      )
+    };
+  }, [displayMenu, inventory, stats.relevantOrders, searchQueries, role, deptCategories]);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type, visible: true });
@@ -350,8 +340,14 @@ export const StaffPortal = ({ user }: { user: User | null }) => {
               <Bars3Icon className="w-6 h-6" />
             </button>
           </div>
-          {view === 'pos' && (
-            <SilverInput placeholder="Quick Menu Search..." icon={MagnifyingGlassIcon} value={searchQuery} onChange={(e: any) => setSearchQuery(e.target.value)} className="w-full xl:w-96" />
+          {['pos', 'inventory', 'orders', 'accounting'].includes(view) && (
+            <SilverInput 
+              placeholder={`Search ${view === 'pos' ? 'Menu' : view === 'orders' ? 'Queue' : view}...`} 
+              icon={MagnifyingGlassIcon} 
+              value={(searchQueries as any)[view]} 
+              onChange={(e: any) => setSearchQueries({ ...searchQueries, [view]: e.target.value })} 
+              className="w-full xl:w-96"
+            />
           )}
         </header>
 

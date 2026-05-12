@@ -27,7 +27,10 @@ import {
   CheckBadgeIcon,
   ArrowLeftOnRectangleIcon,
   BellIcon,
-  ClipboardDocumentCheckIcon
+  ClipboardDocumentCheckIcon,
+  MagnifyingGlassIcon,
+  ArrowTrendingUpIcon,
+  CalendarIcon
 } from "@heroicons/react/24/outline";
 import { User, sendPasswordResetEmail } from "firebase/auth";
 import { 
@@ -44,7 +47,7 @@ import {
   where,
   addDoc
 } from "firebase/firestore";
-import { db, getUserRole, UserRole, auth, seedDatabaseFromJSON, logout, logAudit, requestNotificationPermission } from "../lib/firebase";
+import { db, getUserRole, UserRole, auth, seedDatabaseFromJSON, logout, logAudit, requestNotificationPermission, validateInput, sanitizeInput } from "../lib/firebase";
 import menuDataArchive from "../data/data.json";
 import { 
   GlassCard, 
@@ -59,9 +62,24 @@ import {
   Toast 
 } from "../components/design-system/Primitive";
 import { useNavigate } from "react-router-dom";
+import { CATEGORIES } from "../lib/constants";
 
 export const AdminPortal = ({ user }: { user: User | null }) => {
   const navigate = useNavigate();
+
+  const highlightMatch = (text: string, query: string) => {
+    if (!query || !text) return text;
+    const parts = text.split(new RegExp(`(${query})`, 'gi'));
+    return (
+      <span>
+        {parts.map((part, i) => 
+          part.toLowerCase() === query.toLowerCase() ? 
+            <span key={i} className="bg-gold/20 text-gold rounded-sm px-0.5">{part}</span> : 
+            part
+        )}
+      </span>
+    );
+  };
   const [role, setRole] = useState<UserRole | null>(null);
   const [view, setView] = useState<'dashboard' | 'inventory' | 'staff' | 'orders' | 'accounting' | 'menu' | 'audits'>('dashboard');
   const [orders, setOrders] = useState<any[]>([]);
@@ -76,6 +94,21 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error', visible: boolean }>({ message: '', type: 'success', visible: false });
+
+  // Search States
+  const [searchQueries, setSearchQueries] = useState({
+    inventory: "",
+    menu: "",
+    staff: "",
+    audits: "",
+    accounting: ""
+  });
+
+  // Date Filter State for Accounting
+  const [dateFilter, setDateFilter] = useState({
+    start: "",
+    end: ""
+  });
 
   // Stats calculation
   const stats = useMemo(() => {
@@ -96,8 +129,54 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
       return acc + kitchenItems.reduce((sum: number, i: any) => sum + (i.price * i.quantity), 0);
     }, 0);
 
-    return { totalRevenue, activeOrders, lowStock, totalOrders: todaysOrders.length, barRevenue, kitchenRevenue };
+    const topSelling = [...inventory]
+      .sort((a, b) => (b.soldCount || 0) - (a.soldCount || 0))
+      .slice(0, 5);
+
+    return { totalRevenue, activeOrders, lowStock, totalOrders: todaysOrders.length, barRevenue, kitchenRevenue, topSelling };
   }, [orders, inventory]);
+
+  // Filtered Lists
+  const filteredData = useMemo(() => {
+    const q = searchQueries;
+    
+    let accountingOrders = orders.filter(o => o.status === 'paid');
+    if (dateFilter.start) {
+      const startDate = new Date(dateFilter.start);
+      accountingOrders = accountingOrders.filter(o => o.createdAt?.toDate() >= startDate);
+    }
+    if (dateFilter.end) {
+      const endDate = new Date(dateFilter.end);
+      endDate.setHours(23, 59, 59, 999);
+      accountingOrders = accountingOrders.filter(o => o.createdAt?.toDate() <= endDate);
+    }
+
+    return {
+      inventory: inventory.filter(i => 
+        i.name?.toLowerCase().includes(q.inventory.toLowerCase()) || 
+        i.category?.toLowerCase().includes(q.inventory.toLowerCase()) ||
+        i.id?.toLowerCase().includes(q.inventory.toLowerCase())
+      ),
+      menu: menuItems.filter(i => 
+        i.name?.toLowerCase().includes(q.menu.toLowerCase()) || 
+        i.category?.toLowerCase().includes(q.menu.toLowerCase())
+      ),
+      staff: staff.filter(s => 
+        s.email?.toLowerCase().includes(q.staff.toLowerCase()) || 
+        s.role?.toLowerCase().includes(q.staff.toLowerCase())
+      ),
+      audits: audits.filter(a => 
+        a.action?.toLowerCase().includes(q.audits.toLowerCase()) || 
+        a.performedBy?.toLowerCase().includes(q.audits.toLowerCase()) ||
+        a.category?.toLowerCase().includes(q.audits.toLowerCase())
+      ),
+      accounting: accountingOrders.filter(o => 
+        o.id.toLowerCase().includes(q.accounting.toLowerCase()) || 
+        o.staffName?.toLowerCase().includes(q.accounting.toLowerCase()) ||
+        o.table?.toLowerCase().includes(q.accounting.toLowerCase())
+      )
+    };
+  }, [inventory, menuItems, staff, audits, orders, searchQueries, dateFilter]);
 
   useEffect(() => {
     if (user) {
@@ -108,7 +187,7 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
   useEffect(() => {
     if (role !== 'admin') return;
 
-    const unsubOrders = onSnapshot(query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(500)), (snap) => {
+    const unsubOrders = onSnapshot(query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(1000)), (snap) => {
       setOrders(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
 
@@ -164,19 +243,25 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
   const handleUpdateStaff = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (!selectedItem.email) throw new Error("Email required");
+      const sanitized = {
+        ...selectedItem,
+        email: sanitizeInput(selectedItem.email)
+      };
       
-      const staffRef = selectedItem.id ? doc(db, "admins", selectedItem.id) : doc(collection(db, "admins"));
+      const errors = validateInput(sanitized, { email: 'email', role: 'required' });
+      if (errors.length > 0) throw new Error(errors[0]);
+      
+      const staffRef = sanitized.id ? doc(db, "admins", sanitized.id) : doc(collection(db, "admins"));
       const staffData = {
-        email: selectedItem.email,
-        role: selectedItem.role || 'staff_waiter',
+        email: sanitized.email,
+        role: sanitized.role || 'staff_waiter',
         updatedAt: serverTimestamp(),
-        ...(selectedItem.id ? {} : { createdAt: serverTimestamp() })
+        ...(sanitized.id ? {} : { createdAt: serverTimestamp() })
       };
 
       await setDoc(staffRef, staffData, { merge: true });
-      await logAudit(selectedItem.id ? "PERSONNEL_UPDATE" : "PERSONNEL_ONBOARD", { email: selectedItem.email, role: staffData.role }, 'staff');
-      showToast(selectedItem.id ? "Personnel updated" : "Operator onboarded successfully");
+      await logAudit(sanitized.id ? "PERSONNEL_UPDATE" : "PERSONNEL_ONBOARD", { email: sanitized.email, role: staffData.role }, 'staff');
+      showToast(sanitized.id ? "Personnel updated" : "Operator onboarded successfully");
       setIsModalOpen(false);
     } catch (err: any) {
       showToast(err.message || "Failed to update staff", "error");
@@ -186,21 +271,32 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
   const handleUpdateMenu = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (!selectedItem.name || !selectedItem.price) throw new Error("Name and Price required");
+      const sanitized = {
+        ...selectedItem,
+        name: sanitizeInput(selectedItem.name),
+        description: sanitizeInput(selectedItem.description)
+      };
+
+      const errors = validateInput(sanitized, { 
+        name: ['required', 'string'], 
+        price: ['required', 'positive_number'], 
+        category: ['required', 'string'] 
+      });
+      if (errors.length > 0) throw new Error(errors[0]);
       
-      const menuRef = selectedItem.id ? doc(db, "menu", selectedItem.id) : doc(collection(db, "menu"));
-      const itemId = selectedItem.id || menuRef.id;
+      const menuRef = sanitized.id ? doc(db, "menu", sanitized.id) : doc(collection(db, "menu"));
+      const itemId = sanitized.id || menuRef.id;
       
       const itemData = {
         id: itemId,
-        name: selectedItem.name,
-        price: Number(selectedItem.price),
-        category: selectedItem.category || 'Bar',
-        type: selectedItem.type || 'bar',
-        description: selectedItem.description || '',
-        stock: Number(selectedItem.stock || 0),
+        name: sanitized.name,
+        price: Number(sanitized.price),
+        category: sanitized.category || 'Bar',
+        type: sanitized.type || 'bar',
+        description: sanitized.description || '',
+        stock: Number(sanitized.stock || 0),
         updatedAt: serverTimestamp(),
-        ...(selectedItem.id ? {} : { createdAt: serverTimestamp() })
+        ...(sanitized.id ? {} : { createdAt: serverTimestamp() })
       };
 
       await setDoc(menuRef, itemData, { merge: true });
@@ -226,6 +322,9 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
   const handleUpdateInventory = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const errors = validateInput(selectedItem, { stock: 'positive_number' });
+      if (errors.length > 0) throw new Error(errors[0]);
+
       await updateDoc(doc(db, "inventory", selectedItem.id), { stock: Number(selectedItem.stock) });
       await updateDoc(doc(db, "menu", selectedItem.id), { stock: Number(selectedItem.stock) });
       
@@ -323,7 +422,7 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
         <header className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-8 pb-8 border-b border-white/5">
           <div className="flex flex-row-reverse justify-between items-start w-full xl:flex-row xl:w-auto">
             <div className="space-y-3 text-right xl:text-left">
-              <h3 className="text-gold text-[9px] uppercase tracking-[0.6em] font-black opacity-60">Admin Protocol v9.3</h3>
+              <h3 className="text-gold text-[9px] uppercase tracking-[0.6em] font-black opacity-60">Admin Protocol v10.0</h3>
               <h2 className="text-4xl xl:text-5xl font-serif text-primary tracking-tighter uppercase">{view}</h2>
             </div>
             <button 
@@ -333,40 +432,108 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
               <Bars3Icon className="w-6 h-6" />
             </button>
           </div>
-          <div className="flex gap-6">
-            <div className="xl:text-right">
-              <p className="text-[8px] uppercase tracking-widest text-silver mb-1 opacity-60">Global Net Revenue</p>
-              <p className="text-2xl lg:text-3xl font-serif text-gold font-black">₦{stats.totalRevenue.toLocaleString()}</p>
-            </div>
-            <div className="xl:text-right border-l border-white/10 pl-6">
-              <p className="text-[8px] uppercase tracking-widest text-silver mb-1 opacity-60">Active Queue</p>
-              <p className="text-2xl lg:text-3xl font-serif text-primary font-black">{stats.activeOrders}</p>
+          <div className="flex flex-col sm:flex-row gap-6 items-end w-full xl:w-auto">
+            {['inventory', 'menu', 'staff', 'audits', 'accounting'].includes(view) && (
+              <div className="relative w-full sm:w-64 group">
+                <SilverInput 
+                  placeholder={`Search ${view}...`} 
+                  icon={MagnifyingGlassIcon} 
+                  value={(searchQueries as any)[view]} 
+                  onChange={(e: any) => setSearchQueries({ ...searchQueries, [view]: e.target.value })} 
+                  className="w-full"
+                />
+                {(searchQueries as any)[view] && (
+                  <button 
+                    onClick={() => setSearchQueries({ ...searchQueries, [view]: "" })}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-silver/40 hover:text-gold transition-colors"
+                  >
+                    <XMarkIcon className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            )}
+            <div className="flex gap-6">
+              <div className="xl:text-right">
+                <p className="text-[8px] uppercase tracking-widest text-silver mb-1 opacity-60">Global Net Revenue</p>
+                <p className="text-2xl lg:text-3xl font-serif text-gold font-black">₦{stats.totalRevenue.toLocaleString()}</p>
+              </div>
+              <div className="xl:text-right border-l border-white/10 pl-6">
+                <p className="text-[8px] uppercase tracking-widest text-silver mb-1 opacity-60">Active Queue</p>
+                <p className="text-2xl lg:text-3xl font-serif text-primary font-black">{stats.activeOrders}</p>
+              </div>
             </div>
           </div>
         </header>
 
         {view === 'dashboard' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-             <GlassCard className="p-8 space-y-4">
-                <p className="text-[8px] uppercase tracking-widest text-gold font-black">Total Transmissions</p>
-                <p className="text-4xl font-serif font-black">{stats.totalOrders}</p>
-                <Badge color="gold">Verified Settlements</Badge>
-             </GlassCard>
-             <GlassCard className="p-8 space-y-4">
-                <p className="text-[8px] uppercase tracking-widest text-emerald font-black">Bar Revenue</p>
-                <p className="text-4xl font-serif font-black">₦{stats.barRevenue.toLocaleString()}</p>
-                <Badge color="emerald">Liquid Assets</Badge>
-             </GlassCard>
-             <GlassCard className="p-8 space-y-4">
-                <p className="text-[8px] uppercase tracking-widest text-purple-400 font-black">Kitchen Revenue</p>
-                <p className="text-4xl font-serif font-black">₦{stats.kitchenRevenue.toLocaleString()}</p>
-                <Badge color="purple">Gastronomy Assets</Badge>
-             </GlassCard>
-             <GlassCard className="p-8 space-y-4 border-red-500/10">
-                <p className="text-[8px] uppercase tracking-widest text-red-500 font-black">Low Stock Alert</p>
-                <p className="text-4xl font-serif font-black">{stats.lowStock}</p>
-                <Badge color="red">Immediate Restock</Badge>
-             </GlassCard>
+          <div className="space-y-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+              <GlassCard className="p-8 space-y-4">
+                  <p className="text-[8px] uppercase tracking-widest text-gold font-black">Total Transmissions</p>
+                  <p className="text-4xl font-serif font-black">{stats.totalOrders}</p>
+                  <Badge color="gold">Verified Settlements</Badge>
+              </GlassCard>
+              <GlassCard className="p-8 space-y-4">
+                  <p className="text-[8px] uppercase tracking-widest text-emerald font-black">Bar Revenue</p>
+                  <p className="text-4xl font-serif font-black">₦{stats.barRevenue.toLocaleString()}</p>
+                  <Badge color="emerald">Liquid Assets</Badge>
+              </GlassCard>
+              <GlassCard className="p-8 space-y-4">
+                  <p className="text-[8px] uppercase tracking-widest text-purple-400 font-black">Kitchen Revenue</p>
+                  <p className="text-4xl font-serif font-black">₦{stats.kitchenRevenue.toLocaleString()}</p>
+                  <Badge color="purple">Gastronomy Assets</Badge>
+              </GlassCard>
+              <GlassCard className="p-8 space-y-4 border-red-500/10">
+                  <p className="text-[8px] uppercase tracking-widest text-red-500 font-black">Low Stock Alert</p>
+                  <p className="text-4xl font-serif font-black">{stats.lowStock}</p>
+                  <Badge color="red">Immediate Restock</Badge>
+              </GlassCard>
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+              <GlassCard className="p-10 space-y-8">
+                <div className="flex justify-between items-center">
+                  <SectionTitle subtitle="Movement Analytics" title="Top Performing Assets" />
+                  <ArrowTrendingUpIcon className="w-8 h-8 text-gold opacity-20" />
+                </div>
+                <div className="space-y-6">
+                  {stats.topSelling.map((item, idx) => (
+                    <div key={item.id} className="flex items-center justify-between p-4 bg-white/[0.02] border border-white/[0.05] rounded-2xl group hover:border-gold/20 transition-all">
+                      <div className="flex items-center gap-6">
+                        <span className="text-2xl font-serif font-black text-silver/20">{idx + 1}</span>
+                        <div>
+                          <p className="text-sm font-bold text-primary uppercase tracking-widest">{item.name}</p>
+                          <p className="text-[10px] text-silver/40 uppercase font-black">{item.category}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-serif text-gold font-black">{item.soldCount || 0}</p>
+                        <p className="text-[8px] text-silver/40 uppercase font-black tracking-widest">Units Sold</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </GlassCard>
+
+              <GlassCard className="p-10 space-y-8">
+                <SectionTitle subtitle="Operational Health" title="Recent Security Audits" />
+                <div className="space-y-4">
+                  {audits.slice(0, 5).map((audit) => (
+                    <div key={audit.id} className="flex gap-4 items-start p-4 border-b border-white/5 last:border-0">
+                      <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${audit.severity === 'high' ? 'bg-red-500 animate-pulse' : 'bg-gold'}`} />
+                      <div className="space-y-1 flex-1">
+                        <div className="flex justify-between">
+                          <p className="text-[10px] font-black uppercase text-primary tracking-widest">{audit.action}</p>
+                          <span className="text-[8px] text-silver/40 font-mono">{audit.timestamp?.toDate().toLocaleTimeString()}</span>
+                        </div>
+                        <p className="text-[10px] text-silver/60 italic">{audit.performedBy}</p>
+                      </div>
+                    </div>
+                  ))}
+                  <button onClick={() => setView('audits')} className="w-full py-4 text-[9px] uppercase font-black tracking-widest text-gold hover:bg-gold/5 rounded-2xl transition-all">View All Master Logs</button>
+                </div>
+              </GlassCard>
+            </div>
           </div>
         )}
 
@@ -374,7 +541,7 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
           <div className="space-y-10">
             <SectionTitle subtitle="Governance Traceability" title="Master Audit Logs" />
             <LuxuryTable headers={['Timestamp', 'Action', 'Category', 'Operator', 'Details']}>
-              {audits.map((audit) => (
+              {filteredData.audits.map((audit) => (
                 <tr key={audit.id} className="group hover:bg-white/[0.02] border-b border-white/[0.02]">
                   <td className="px-6 py-5 text-[10px] text-silver font-mono">{audit.timestamp?.toDate().toLocaleString()}</td>
                   <td className="px-6 py-5">
@@ -395,16 +562,17 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
           <div className="space-y-10">
             <SectionTitle subtitle="Resource Synchronization" title="Stock Analytics" />
             <LuxuryTable headers={['Resource Identification', 'Category', 'Stock Availability', 'Sold Units', 'Action']}>
-              {inventory.map((item) => (
+              {filteredData.inventory.map((item) => (
                 <tr key={item.id} className="group hover:bg-white/[0.02] border-b border-white/[0.02]">
                   <td className="px-6 py-5">
                     <p className="text-sm font-bold text-primary leading-none uppercase tracking-wide">{item.name}</p>
+                    <p className="text-[8px] text-silver/40 mt-1 font-mono uppercase tracking-widest">UID: {item.id.slice(0, 8)}</p>
                   </td>
                   <td className="px-6 py-5">
                     <Badge color="silver">{item.category}</Badge>
                   </td>
                   <td className="px-6 py-5 font-mono text-gold font-black">{item.stock} Units</td>
-                  <td className="px-6 py-5 text-silver text-xs font-bold italic">{item.soldCount || 0} transmission</td>
+                  <td className="px-6 py-5 text-silver text-xs font-bold italic">{item.soldCount || 0} transmissions</td>
                   <td className="px-6 py-5 text-right">
                     <button onClick={() => { setSelectedItem(item); setModalType('item'); setIsModalOpen(true); }} className="p-2 text-silver/40 hover:text-gold transition-all"><AdjustmentsHorizontalIcon className="w-5 h-5" /></button>
                   </td>
@@ -418,7 +586,7 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
           <div className="space-y-10">
             <div className="flex justify-between items-center"><SectionTitle subtitle="Registry Control" title="Master Gastronomy" /><GoldButton onClick={() => { setModalType('menu'); setSelectedItem({ category: 'Bar', price: 0, type: 'bar' }); setIsModalOpen(true); }}><PlusIcon className="w-4 h-4 mr-2" /> Create Item</GoldButton></div>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {menuItems.map((item) => (
+              {filteredData.menu.map((item) => (
                 <GlassCard key={item.id} className="p-8 space-y-6 border-white/5 hover:border-gold/30 transition-all group">
                   <div className="flex justify-between items-start"><Badge color="gold">{item.category}</Badge><p className="text-xl font-serif text-primary font-black">₦{item.price.toLocaleString()}</p></div>
                   <div className="space-y-2"><h4 className="text-xl font-bold text-primary group-hover:text-gold transition-colors leading-tight">{item.name}</h4><p className="text-[10px] text-silver/60 line-clamp-3 leading-relaxed">{item.description}</p></div>
@@ -436,7 +604,7 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
           <div className="space-y-10">
             <div className="flex justify-between items-center"><SectionTitle subtitle="Operational Security" title="Operator Directory" /><GoldButton onClick={() => { setModalType('staff'); setSelectedItem({ role: 'staff_waiter' }); setIsModalOpen(true); }}><UserPlusIcon className="w-4 h-4 mr-2" /> Add Personnel</GoldButton></div>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {staff.map((member) => (
+              {filteredData.staff.map((member) => (
                 <GlassCard key={member.id} className="p-8 space-y-6 border-white/5 group">
                   <div className="flex justify-between items-start"><div className="w-14 h-14 rounded-2xl bg-black border border-white/10 flex items-center justify-center text-gold font-bold text-2xl shadow-2xl uppercase">{member.email?.[0]}</div><Badge color={member.role === 'admin' ? 'gold' : member.role === 'staff_bar' ? 'purple' : 'emerald'}>{member.role.replace('_', ' ').toUpperCase()}</Badge></div>
                   <div className="space-y-1"><p className="text-sm font-bold text-primary truncate tracking-widest">{member.email}</p><p className="text-[8px] uppercase tracking-[0.3em] text-silver/40 font-black">Operator Key: {member.id.slice(-8)}</p></div>
@@ -451,14 +619,50 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
         )}
 
         {view === 'accounting' && (
-           <div className="space-y-8">
-              <SectionTitle subtitle="Production Audit" title="Financial Settlements" />
-              <LuxuryTable headers={['Audit Ref', 'Timestamp', 'Operator', 'Value', 'Status']}>
-                {orders.filter(o => o.status === 'paid').map((order) => (
+           <div className="space-y-10">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+                <SectionTitle subtitle="Production Audit" title="Financial Settlements" />
+                <div className="flex flex-wrap gap-4 w-full md:w-auto">
+                   <div className="space-y-1">
+                      <p className="text-[8px] uppercase font-black text-silver/40 tracking-widest ml-1">From</p>
+                      <input type="date" value={dateFilter.start} onChange={(e) => setDateFilter({...dateFilter, start: e.target.value})} className="bg-white/5 border border-white/10 rounded-xl p-2 text-[10px] text-primary focus:outline-none focus:border-gold/30" />
+                   </div>
+                   <div className="space-y-1">
+                      <p className="text-[8px] uppercase font-black text-silver/40 tracking-widest ml-1">To</p>
+                      <input type="date" value={dateFilter.end} onChange={(e) => setDateFilter({...dateFilter, end: e.target.value})} className="bg-white/5 border border-white/10 rounded-xl p-2 text-[10px] text-primary focus:outline-none focus:border-gold/30" />
+                   </div>
+                   <button 
+                    onClick={() => setDateFilter({ start: "", end: "" })}
+                    className="self-end p-2 text-silver/40 hover:text-red-400 transition-colors"
+                    title="Clear Filters"
+                   >
+                    <XMarkIcon className="w-5 h-5" />
+                   </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 <GlassCard className="p-6 border-white/5">
+                    <p className="text-[8px] uppercase tracking-widest text-silver mb-1 font-black">Period Total</p>
+                    <p className="text-2xl font-serif text-gold font-black">₦{filteredData.accounting.reduce((acc, curr) => acc + (curr.total || 0), 0).toLocaleString()}</p>
+                 </GlassCard>
+                 <GlassCard className="p-6 border-white/5">
+                    <p className="text-[8px] uppercase tracking-widest text-silver mb-1 font-black">Audit Count</p>
+                    <p className="text-2xl font-serif text-primary font-black">{filteredData.accounting.length}</p>
+                 </GlassCard>
+                 <GlassCard className="p-6 border-white/5">
+                    <p className="text-[8px] uppercase tracking-widest text-silver mb-1 font-black">Average Value</p>
+                    <p className="text-2xl font-serif text-primary font-black">₦{(filteredData.accounting.length ? Math.round(filteredData.accounting.reduce((acc, curr) => acc + (curr.total || 0), 0) / filteredData.accounting.length) : 0).toLocaleString()}</p>
+                 </GlassCard>
+              </div>
+
+              <LuxuryTable headers={['Audit Ref', 'Timestamp', 'Room/Table', 'Operator', 'Value', 'Status']}>
+                {filteredData.accounting.map((order) => (
                   <tr key={order.id} className="group hover:bg-white/[0.02] border-b border-white/[0.02]">
-                    <td className="px-8 py-6 text-xs text-primary font-black uppercase tracking-tighter">{order.id.slice(-10)}</td>
+                    <td className="px-8 py-6 text-xs text-primary font-black uppercase tracking-tighter">{highlightMatch(order.id.slice(-10), searchQueries.accounting)}</td>
                     <td className="px-8 py-6 text-[10px] text-silver font-mono">{order.formattedDate} {order.formattedTime}</td>
-                    <td className="px-8 py-6"><div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-emerald shadow-[0_0_10px_#10b981]" /><p className="text-[10px] text-primary font-black uppercase">{order.staffName || "System"}</p></div></td>
+                    <td className="px-8 py-6 text-[10px] text-primary font-black">{highlightMatch(order.table, searchQueries.accounting)}</td>
+                    <td className="px-8 py-6"><div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-emerald shadow-[0_0_10px_#10b981]" /><p className="text-[10px] text-primary font-black uppercase">{highlightMatch(order.staffName || "System", searchQueries.accounting)}</p></div></td>
                     <td className="px-8 py-6 font-serif text-gold font-black">₦{order.total?.toLocaleString()}</td>
                     <td className="px-8 py-6"><Badge color="emerald">AUDITED</Badge></td>
                   </tr>
@@ -485,7 +689,7 @@ export const AdminPortal = ({ user }: { user: User | null }) => {
                 <div className="space-y-2"><label className="text-[10px] uppercase font-black text-silver">Credit Value (₦)</label><SilverInput type="number" placeholder="Price" value={selectedItem?.price || 0} onChange={(e: any) => setSelectedItem({ ...selectedItem, price: e.target.value })} /></div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><label className="text-[10px] uppercase font-black text-silver">Category Registry</label><select value={selectedItem?.category || 'Bar'} onChange={(e) => setSelectedItem({ ...selectedItem, category: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-primary focus:outline-none"><option value="Bar">Bar</option><option value="Kitchen Menu">Kitchen Menu</option><option value="Exotic Kitchen">Exotic Kitchen</option><option value="Mocktails">Mocktails</option><option value="Cocktails">Cocktails</option><option value="Whiskey">Whiskey</option><option value="Tequila">Tequila</option><option value="Wine">Wine</option><option value="Beer">Beer</option><option value="Soft Drinks">Soft Drinks</option><option value="Apartments">Apartments</option><option value="Leisure">Leisure</option></select></div>
+                <div className="space-y-2"><label className="text-[10px] uppercase font-black text-silver">Category Registry</label><select value={selectedItem?.category || 'Bar'} onChange={(e) => setSelectedItem({ ...selectedItem, category: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-primary focus:outline-none">{CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
                 <div className="space-y-2"><label className="text-[10px] uppercase font-black text-silver">Initial Availability</label><SilverInput type="number" placeholder="Stock" value={selectedItem?.stock || 0} onChange={(e: any) => setSelectedItem({ ...selectedItem, stock: e.target.value })} /></div>
               </div>
               <div className="space-y-2"><label className="text-[10px] uppercase font-black text-silver">Resource Type</label><select value={selectedItem?.type || 'bar'} onChange={(e) => setSelectedItem({ ...selectedItem, type: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-primary focus:outline-none"><option value="bar">Bar (Beverage)</option><option value="kitchen">Kitchen (Food)</option><option value="hotel">Stay (Apartments)</option></select></div>

@@ -19,6 +19,7 @@ import {
   getDocFromServer,
   addDoc
 } from 'firebase/firestore';
+import { ADMIN_EMAILS, STAFF_EMAILS } from './constants';
 
 const firebaseConfig = {
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
@@ -64,14 +65,100 @@ export const logAudit = async (action: string, details: any, category: 'sales' |
       performedBy: user?.email || 'system',
       performedByUid: user?.uid || 'system',
       timestamp: serverTimestamp(),
-      severity: category === 'sales' || category === 'inventory' ? 'high' : 'medium'
+      severity: category === 'sales' || category === 'inventory' ? 'high' : 'medium',
+      metadata: {
+        userAgent: navigator.userAgent,
+        path: window.location.pathname,
+        ip: 'obscured'
+      }
     });
     
-    // In a real-world scenario, this would trigger a Cloud Function to send Email/Push
     console.log(`[AUDIT] ${action}:`, details);
   } catch (err) {
     console.error("Audit logging failed:", err);
   }
+};
+
+/**
+ * Advanced Sanitization to prevent XSS and Injection
+ */
+export const sanitizeInput = (str: any): string => {
+  if (typeof str !== 'string') return String(str || '');
+  return str
+    .trim()
+    .replace(/[&<>"']/g, (m) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    })[m] || m)
+    .replace(/\//g, '&#x2F;'); // Additional slash sanitization
+};
+
+/**
+ * Security-First Input Validation Engine
+ */
+export type ValidationType = 'string' | 'number' | 'email' | 'required' | 'positive_number' | 'id' | 'role' | 'url';
+
+export const validateInput = (data: any, schema: Record<string, ValidationType[]>) => {
+  const errors: string[] = [];
+  
+  for (const [key, rules] of Object.entries(schema)) {
+    const value = data[key];
+    
+    for (const rule of rules) {
+      if (rule === 'required' && (value === undefined || value === null || value === '')) {
+        errors.push(`${key} is mandatory for transmission`);
+        break; // Stop checking other rules for this field if it's missing
+      }
+
+      if (value === undefined || value === null || value === '') continue;
+
+      switch (rule) {
+        case 'email':
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+            errors.push(`${key} must be a valid authorized email identity`);
+          }
+          break;
+        case 'positive_number':
+          const num = Number(value);
+          if (isNaN(num) || num < 0) {
+            errors.push(`${key} must be a positive numeric value`);
+          }
+          break;
+        case 'number':
+          if (isNaN(Number(value))) {
+            errors.push(`${key} must be a numeric value`);
+          }
+          break;
+        case 'id':
+          if (typeof value !== 'string' || value.length < 5) {
+            errors.push(`${key} must be a valid system identifier`);
+          }
+          break;
+        case 'role':
+          const validRoles = ['admin', 'staff_bar', 'staff_waiter', 'staff'];
+          if (!validRoles.includes(value)) {
+            errors.push(`${key} must be a recognized security protocol role`);
+          }
+          break;
+        case 'string':
+          if (typeof value !== 'string') {
+            errors.push(`${key} must be a string sequence`);
+          } else if (value.length > 5000) {
+            errors.push(`${key} exceeds maximum safe payload size`);
+          }
+          break;
+        case 'url':
+          if (typeof value === 'string' && value.length > 0) {
+            try { new URL(value); } catch { errors.push(`${key} must be a valid resource locator`); }
+          }
+          break;
+      }
+    }
+  }
+  return errors;
 };
 
 export const requestNotificationPermission = async () => {
@@ -106,8 +193,10 @@ export const getUserRole = async (uid: string, email?: string | null): Promise<U
   const targetEmail = email || auth.currentUser?.email;
   
   if (!uid && !targetEmail) return 'guest';
-  if (targetEmail === 'contact@tricode.pro' || targetEmail === 'brightstarcave@gmail.com' || targetEmail === env.VITE_ADMIN_EMAIL) return 'admin';
-  if (targetEmail === env.VITE_STAFF_EMAIL || targetEmail === 'lukeokagha@gmail.com') return 'staff_waiter';
+  
+  // High-priority whitelist
+  if (targetEmail && (ADMIN_EMAILS.includes(targetEmail) || targetEmail === env.VITE_ADMIN_EMAIL)) return 'admin';
+  if (targetEmail && (STAFF_EMAILS.includes(targetEmail) || targetEmail === env.VITE_STAFF_EMAIL)) return 'staff_waiter';
 
   try {
     const adminDoc = await getDoc(doc(db, "admins", uid));
